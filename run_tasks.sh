@@ -2,6 +2,6 @@
 
 for filename in ../tasks/*.las; do
     echo "Learning $filename..."
-    FastLAS --d $filename > ../models/$(basename "$filename" .las).lp
+    docker run -v $PWD/../tasks:/tasks fastlas FastLAS /$filename > ../models/$(basename "$filename" .las).lp
 done
 echo "Done"
