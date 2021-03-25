@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM python:3-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -15,3 +15,5 @@ COPY ./FastLAS .
 RUN mv ./FastLAS /usr/local/bin
 WORKDIR /
 RUN rm -rf /tmp/ilasp
+
+COPY ./generator /generator

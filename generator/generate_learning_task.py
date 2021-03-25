@@ -55,7 +55,7 @@ def _example_to_bias(ID, atoms):
 def examples_to_bias(examples):
     return '\n'.join([f"#bias('user({eg_id}).').\n{_example_to_bias(eg_id, atoms)}" for eg_id, atoms in examples])
 
-def generate_mode_bias(atoms, variables_in_bias, examples_in_bias):
+def generate_mode_bias(atoms, num_body_attributes, variables_in_bias, examples_in_bias):
     mode_bias = []
     placeholder_types = ['const'] + (['var'] if variables_in_bias else [])
     for k, terms in reduce(lambda a, b: a + b, map(lambda a: a[1], atoms)):
@@ -70,28 +70,32 @@ def generate_mode_bias(atoms, variables_in_bias, examples_in_bias):
                 mode_bias.append(mb)
     if examples_in_bias:
         mode_bias.append(examples_to_bias(atoms))
-    mode_bias.append('''
+    mode_bias.append(f'''
 #modeh(allow).
 #maxv(1).
+
 % Prefer rules with a certain number of body literals
-#bias("penalty((N - 5)**2, rule) :- N = #count{X: in_body(X)}.").
+#bias("penalty((N - {num_body_attributes})**2, rule) :- N = #count{{X: in_body(X)}}.").
+
 % Prefer earlier path components
 #bias("penalty(N, body(X)) :- in_body(X), X = parsed_path(N, Y).").
+
 % Prefer certain attributes in the body of rules
-#bias("penalty(1, body(X)) :- in_body(X), not required(X).").
-#bias("required(X) :- in_body(X), X = parsed_path(N, Y).").
+% #bias("penalty(1, body(X)) :- in_body(X), not required(X).").
+% #bias("required(X) :- in_body(X), X = parsed_path(N, Y).").
 % #bias("required(X) :- in_body(X), X = request_host(Y).").
 % #bias("required(X) :- in_body(X), X = source_address(Y).").
 ''')
     return '\n'.join(mode_bias)
 
 
-if __name__ == '__main__':
-    data = 'synheart-controller-opa-istio.log'
-    data_base = data.rsplit('.', 1)[0]
-    access_examples = preprocess_data(f'../data/{data}')
+def generate_learning_task(data, data_base, data_dir, tasks_dir, num_body_attributes):
+    access_examples = preprocess_data(f'{data_dir}/{data}')
     example_atoms = examples_to_atoms(access_examples)
     las_examples = examples_to_las(example_atoms)
-    las_mode_bias = generate_mode_bias(example_atoms, variables_in_bias=False, examples_in_bias=False)
-    with open(f'../tasks/{data_base}.las', 'w') as f:
+    las_mode_bias = generate_mode_bias(example_atoms, num_body_attributes,
+                                       variables_in_bias=False, examples_in_bias=False)
+    task_path = f'{tasks_dir}/{data_base}.las'
+    with open(task_path, 'w') as f:
         f.write(las_examples + '\n\n' + las_mode_bias)
+    return task_path
