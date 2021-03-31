@@ -51,11 +51,11 @@ def _process_request(request):
     # req = request
 
     req = {}
-    req['destination_address'] = request['attributes']['destination']['address']['socketAddress']['address']
-    req['destination_portValue'] = request['attributes']['destination']['address']['socketAddress']['portValue']
-    req['source_address'] = request['attributes']['source']['address']['socketAddress']['address']
-    req['request_host'] = request['attributes']['request']['http']['host']
-    req['request_method'] = request['attributes']['request']['http']['method']
+    req['destination__address'] = request['attributes']['destination']['address']['socketAddress']['address']
+    req['destination__portValue'] = request['attributes']['destination']['address']['socketAddress']['portValue']
+    req['source__address'] = request['attributes']['source']['address']['socketAddress']['address']
+    req['request__host'] = request['attributes']['request']['http']['host']
+    req['request__method'] = request['attributes']['request']['http']['method']
     # req['request_origin'] = request['attributes']['request']['http']['headers']['origin']
     # req['request_referer'] = request['attributes']['request']['http']['headers']['referer']
     # req['request_user_agent'] = request['attributes']['request']['http']['headers']['user-agent']

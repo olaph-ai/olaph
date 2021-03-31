@@ -1,10 +1,29 @@
+from re import split, sub
+
 def generate_rego_policy(model, data_base, policies_dir):
+    not_in_quotes = '(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)'
     rego_policy = []
-    for rule in model.split('\n'):
-        head, body = rule.split(' :- ', 1)
-        rego_body = body[:-1].replace(', ', '\n    ')
+    for rule in split(rf'\n{not_in_quotes}', model):
+        head, body = split(rf' :- {not_in_quotes}', rule)
+        body_atoms = split(rf', {not_in_quotes}', body[:-1])
+        rego_body = []
+        for atom in body_atoms:
+            s = split(rf'\({not_in_quotes}', atom)
+            name, terms = sub(rf'\_\_{not_in_quotes}', '.', s[0]), split(rf',{not_in_quotes}', s[1][:-1])
+            rego_atom = []
+            rego_atom.append(name)
+            terms, result = terms[:-1], terms[-1]
+            for term in terms:
+                if '"' not in term:
+                    rego_atom.append(f'[{term}]')
+                else:
+                    term = term[1:][:-1]
+                    rego_atom.append(f'.{term}')
+            rego_atom.append(f' == {result}')
+            rego_body.append(''.join(rego_atom))
+        rego_body = '\n    '.join(rego_body)
         rego_policy.append(f"""
-{head} {{
+{head.strip()} {{
     {rego_body}
 }}
 """)
