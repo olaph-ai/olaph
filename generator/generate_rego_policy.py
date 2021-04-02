@@ -4,7 +4,12 @@ def generate_rego_policy(model, data_base, policies_dir):
     not_in_quotes = '(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)'
     rego_policy = []
     for rule in split(rf'\n{not_in_quotes}', model):
-        head, body = split(rf' :- {not_in_quotes}', rule)
+        rule = split(rf' :- {not_in_quotes}', rule)
+        if len(rule) > 1:
+            head, body = rule
+        else:
+            rego_policy.append(f"\n{rule[0].strip()[:-1]} = true\n")
+            break
         body_atoms = split(rf', {not_in_quotes}', body[:-1])
         rego_body = []
         for atom in body_atoms:

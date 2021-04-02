@@ -32,33 +32,34 @@ def _dictify_lists(x):
     return x
 
 def _process_request(request):
-    # request.pop('version', None)
     # request.pop('truncated_body', None)
-    # request['attributes']['request'].pop('time', None)
-    # request['attributes']['request']['http'].pop('id', None)
-    # request['attributes']['request']['http']['headers'].pop('x-request-id', None)
+    request['attributes']['request'].pop('time', None)
+    request['attributes']['request']['http'].pop('id', None)
+    request['attributes']['request']['http']['headers'].pop('x-request-id', None)
+    request['attributes']['source']['address']['socketAddress'].pop('portValue', None)
+    # request.pop('version', None)
     # request['attributes']['request']['http']['headers'].pop(':path', None)
     # request['attributes']['request']['http']['headers'].pop(':authority', None)
     # request['attributes']['request']['http']['headers'].pop('accept-encoding', None)
     # request['attributes']['request']['http']['headers'].pop('accept-language', None)
-
     # request['attributes']['request']['http'].pop('path', None)
     # request['attributes']['request']['http'].pop('protocol', None)
-    # request['attributes']['source']['address']['socketAddress'].pop('portValue', None)
     # for key in list(request['attributes']['request']['http']['headers'].keys()):
-    #     if 'x-' in key and key != 'x-forwarded-host' or 'sec-' in key:
+    #     if 'x-' in key or 'sec-' in key:
     #         request['attributes']['request']['http']['headers'].pop(key, None)
-    # req = request
 
-    req = {}
-    req['destination__address'] = request['attributes']['destination']['address']['socketAddress']['address']
-    req['destination__portValue'] = request['attributes']['destination']['address']['socketAddress']['portValue']
-    req['source__address'] = request['attributes']['source']['address']['socketAddress']['address']
-    req['request__host'] = request['attributes']['request']['http']['host']
-    req['request__method'] = request['attributes']['request']['http']['method']
-    # req['request_origin'] = request['attributes']['request']['http']['headers']['origin']
-    # req['request_referer'] = request['attributes']['request']['http']['headers']['referer']
-    # req['request_user_agent'] = request['attributes']['request']['http']['headers']['user-agent']
+    # req = {}
+    # req['destination__address'] = request['attributes']['destination']['address']['socketAddress']['address']
+    # req['destination__portValue'] = request['attributes']['destination']['address']['socketAddress']['portValue']
+    # req['source__address'] = request['attributes']['source']['address']['socketAddress']['address']
+    # req['request__host'] = request['attributes']['request']['http']['host']
+    # req['request__method'] = request['attributes']['request']['http']['method']
+    # if request['attributes']['request']['http']['headers'].get('origin'):
+    #     req['request__origin'] = request['attributes']['request']['http']['headers']['origin']
+    # if request['attributes']['request']['http']['headers'].get('referer'):
+    #     req['request__referer'] = request['attributes']['request']['http']['headers']['referer']
+    # if request['attributes']['request']['http']['headers'].get('user-agent'):
+    #     req['request__user_agent'] = request['attributes']['request']['http']['headers']['user-agent']
 
     context = {}
     if d := request.pop('parsed_body', None):
@@ -69,8 +70,8 @@ def _process_request(request):
         context['parsed_path'] = dict(enumerate(l))
     for k in [k for k in request if k != 'attributes']:
         request['attributes'][k] = request.pop(k)
-    return req, context
-    # return flatten(request['attributes']), context
+    # return req, context
+    return flatten(request['attributes']), context
 
 def get_requests_from_logs(logs):
     return list(

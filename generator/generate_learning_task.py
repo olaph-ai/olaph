@@ -12,7 +12,7 @@ def _escape_str_bias(s):
     return s
 
 def _val_to_las(v):
-    return str(v) if isinstance(v, int) else f'"{_escape_str(str(v))}"'
+    return str(v).lower() if isinstance(v, int) else f'"{_escape_str(str(v))}"'
 
 def _context_to_atoms(ck, context):
     atoms = []
@@ -68,14 +68,15 @@ def generate_mode_bias(atoms, num_body_attributes, variables_in_bias, examples_i
             mb = f'#constant({k}, {term}).'
             if mb not in mode_bias:
                 mode_bias.append(mb)
+    max_body_literals = max(map(lambda a: len(a[1]), atoms))
     if examples_in_bias:
         mode_bias.append(examples_to_bias(atoms))
     mode_bias.append(f'''
 #modeh(allow).
 #maxv(1).
 
-% Prefer rules with a certain number of body literals
-#bias("penalty((N - {num_body_attributes})**2, rule) :- N = #count{{X: in_body(X)}}.").
+% Prefer rules with the maximum number of body literals in the examples
+#bias("penalty((N - {max_body_literals})**2, rule) :- N = #count{{X: in_body(X)}}.").
 
 % Prefer earlier path components
 #bias("penalty(N, body(X)) :- in_body(X), X = parsed_path(N, Y).").
