@@ -3,8 +3,8 @@ from re import split, sub
 def generate_rego_policy(model, data_base, policies_dir):
     not_in_quotes = '(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)'
     rego_policy = [f"""
-import input.attributes.source
-import input.attributes.destination
+import input.attributes.source.address.socketAddress as source
+import input.attributes.destination.address.socketAddress as destination
 import input.attributes.request.http as request
 import input.attributes.request.http.headers
 import input.parsed_body

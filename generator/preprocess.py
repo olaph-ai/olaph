@@ -31,8 +31,8 @@ def _process_request(request):
     request['input']['attributes']['source']['address']['socketAddress'].pop('portValue', None)
 
     # Shortcuts for Rego imports
-    request['source'] = request['input']['attributes'].pop('source')
-    request['destination'] = request['input']['attributes'].pop('destination')
+    request['source'] = request['input']['attributes']['source']['address'].pop('socketAddress')
+    request['destination'] = request['input']['attributes']['destination']['address'].pop('socketAddress')
     request['headers'] = request['input']['attributes']['request']['http'].pop('headers')
     request['request'] = request['input']['attributes']['request'].pop('http')
 

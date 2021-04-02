@@ -55,7 +55,7 @@ def _example_to_bias(ID, atoms):
 def examples_to_bias(examples):
     return '\n'.join([f"#bias('user({eg_id}).').\n{_example_to_bias(eg_id, atoms)}" for eg_id, atoms in examples])
 
-def generate_mode_bias(atoms, num_body_attributes, variables_in_bias, examples_in_bias):
+def generate_mode_bias(atoms, variables_in_bias, examples_in_bias):
     mode_bias = []
     placeholder_types = ['const'] + (['var'] if variables_in_bias else [])
     for k, terms in reduce(lambda a, b: a + b, map(lambda a: a[1], atoms)):
@@ -90,12 +90,11 @@ def generate_mode_bias(atoms, num_body_attributes, variables_in_bias, examples_i
     return '\n'.join(mode_bias)
 
 
-def generate_learning_task(data, data_base, data_dir, tasks_dir, num_body_attributes):
+def generate_learning_task(data, data_base, data_dir, tasks_dir):
     access_examples = preprocess_data(f'{data_dir}/{data}')
     example_atoms = examples_to_atoms(access_examples)
     las_examples = examples_to_las(example_atoms)
-    las_mode_bias = generate_mode_bias(example_atoms, num_body_attributes,
-                                       variables_in_bias=False, examples_in_bias=False)
+    las_mode_bias = generate_mode_bias(example_atoms, variables_in_bias=False, examples_in_bias=False)
     task_path = f'{tasks_dir}/{data_base}.las'
     with open(task_path, 'w') as f:
         f.write(las_examples + '\n\n' + las_mode_bias)

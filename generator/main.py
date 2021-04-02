@@ -12,8 +12,6 @@ if __name__ == '__main__':
     models_dir = os.getenv('MODELS_DIR', '../models')
     policies_dir = os.getenv('POLICIES_DIR', '../policies')
 
-    num_body_attributes = os.getenv('N_BODY_ATTRIBUTES') or 4
-
-    task_path = generate_learning_task(data, data_base, data_dir, tasks_dir, num_body_attributes)
+    task_path = generate_learning_task(data, data_base, data_dir, tasks_dir)
     model = run_task(task_path, data_base, models_dir)
     generate_rego_policy(model, data_base, policies_dir)
