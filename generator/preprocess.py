@@ -1,24 +1,16 @@
 import json
 
-def _cleanup_name(name):
-    clean = name.split('_')
-    if len(clean) <= 2:
-        clean = '_'.join(clean)
-    else:
-        clean = '_'.join([clean[0], clean[-1]])
-    return clean.replace(':', '').replace('-', '_').lower()
-
 def flatten(request):
     example = {}
     def flatten_aux(x, name):
         if type(x) is dict:
             for k in x:
-                flatten_aux(x[k], f'{name}{k}_')
+                flatten_aux(x[k], f'{name}{k}__')
         elif type(x) is list:
             for i, e in enumerate(x):
-                flatten_aux(e, f'{name[:-1]}{i}_')
+                flatten_aux(e, f'{name[:-1]}{i}__')
         else:
-            example[_cleanup_name(name[:-1])] = x
+            example[name[:-2]] = x
     flatten_aux(request, '')
     return example
 
@@ -32,50 +24,30 @@ def _dictify_lists(x):
     return x
 
 def _process_request(request):
-    # request.pop('truncated_body', None)
-    request['attributes']['request'].pop('time', None)
-    request['attributes']['request']['http'].pop('id', None)
-    request['attributes']['request']['http']['headers'].pop('x-request-id', None)
-    request['attributes']['source']['address']['socketAddress'].pop('portValue', None)
-    # request.pop('version', None)
-    # request['attributes']['request']['http']['headers'].pop(':path', None)
-    # request['attributes']['request']['http']['headers'].pop(':authority', None)
-    # request['attributes']['request']['http']['headers'].pop('accept-encoding', None)
-    # request['attributes']['request']['http']['headers'].pop('accept-language', None)
-    # request['attributes']['request']['http'].pop('path', None)
-    # request['attributes']['request']['http'].pop('protocol', None)
-    # for key in list(request['attributes']['request']['http']['headers'].keys()):
-    #     if 'x-' in key or 'sec-' in key:
-    #         request['attributes']['request']['http']['headers'].pop(key, None)
+    # Remove attributes that change in every request
+    request['input']['attributes']['request'].pop('time', None)
+    request['input']['attributes']['request']['http'].pop('id', None)
+    request['input']['attributes']['request']['http']['headers'].pop('x-request-id', None)
+    request['input']['attributes']['source']['address']['socketAddress'].pop('portValue', None)
 
-    # req = {}
-    # req['destination__address'] = request['attributes']['destination']['address']['socketAddress']['address']
-    # req['destination__portValue'] = request['attributes']['destination']['address']['socketAddress']['portValue']
-    # req['source__address'] = request['attributes']['source']['address']['socketAddress']['address']
-    # req['request__host'] = request['attributes']['request']['http']['host']
-    # req['request__method'] = request['attributes']['request']['http']['method']
-    # if request['attributes']['request']['http']['headers'].get('origin'):
-    #     req['request__origin'] = request['attributes']['request']['http']['headers']['origin']
-    # if request['attributes']['request']['http']['headers'].get('referer'):
-    #     req['request__referer'] = request['attributes']['request']['http']['headers']['referer']
-    # if request['attributes']['request']['http']['headers'].get('user-agent'):
-    #     req['request__user_agent'] = request['attributes']['request']['http']['headers']['user-agent']
+    # Shortcuts for Rego imports
+    request['source'] = request['input']['attributes'].pop('source')
+    request['destination'] = request['input']['attributes'].pop('destination')
+    request['headers'] = request['input']['attributes']['request']['http'].pop('headers')
+    request['request'] = request['input']['attributes']['request'].pop('http')
 
-    context = {}
-    if d := request.pop('parsed_body', None):
+    context = {'input': {}}
+    if d := request['input'].pop('parsed_body', None):
         context['parsed_body'] = _dictify_lists(d)
-    if d := request.pop('parsed_query', None):
+    if d := request['input'].pop('parsed_query', None):
         context['parsed_query'] = _dictify_lists(d)
-    if l := request.pop('parsed_path', None):
+    if l := request['input'].pop('parsed_path', None):
         context['parsed_path'] = dict(enumerate(l))
-    for k in [k for k in request if k != 'attributes']:
-        request['attributes'][k] = request.pop(k)
-    # return req, context
-    return flatten(request['attributes']), context
+    return flatten(request), context
 
 def get_requests_from_logs(logs):
     return list(
-        map(lambda d: _process_request(d['input']),
+        map(lambda d: _process_request({'input': d['input']}),
             filter(lambda l: l['msg'] == 'Decision Log', logs)
         )
     )

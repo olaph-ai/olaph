@@ -2,13 +2,26 @@ from re import split, sub
 
 def generate_rego_policy(model, data_base, policies_dir):
     not_in_quotes = '(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)'
-    rego_policy = []
+    rego_policy = [f"""
+import input.attributes.source
+import input.attributes.destination
+import input.attributes.request.http as request
+import input.attributes.request.http.headers
+import input.parsed_body
+import input.parsed_path
+import input.parsed_path
+
+default allow = false
+"""]
     for rule in split(rf'\n{not_in_quotes}', model):
         rule = split(rf' :- {not_in_quotes}', rule)
         if len(rule) > 1:
             head, body = rule
         else:
-            rego_policy.append(f"\n{rule[0].strip()[:-1]} = true\n")
+            if rule[0]:
+                rego_policy.append(f"\n{rule[0].strip()[:-1]} = true\n")
+            else:
+                rego_policy.pop(0)
             break
         body_atoms = split(rf', {not_in_quotes}', body[:-1])
         rego_body = []
@@ -32,9 +45,6 @@ def generate_rego_policy(model, data_base, policies_dir):
     {rego_body}
 }}
 """)
-    rego_policy = f"""package {data_base.replace('-', '_')}
-
-default allow = false
-""" + '\n'.join(rego_policy)
+    rego_policy = f"package {data_base.replace('-', '_')}\n" + '\n'.join(rego_policy)
     with open(f'{policies_dir}/{data_base}.rego', 'w') as f:
         f.write(rego_policy)
