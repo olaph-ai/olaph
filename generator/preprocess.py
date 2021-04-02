@@ -30,13 +30,14 @@ def _process_request(request):
     request['input']['attributes']['request']['http']['headers'].pop('x-request-id', None)
     request['input']['attributes']['source']['address']['socketAddress'].pop('portValue', None)
 
+    context = {'input': {}}
+
     # Shortcuts for Rego imports
     request['source'] = request['input']['attributes']['source']['address'].pop('socketAddress')
     request['destination'] = request['input']['attributes']['destination']['address'].pop('socketAddress')
-    request['headers'] = request['input']['attributes']['request']['http'].pop('headers')
+    context['headers'] = request['input']['attributes']['request']['http'].pop('headers')
     request['request'] = request['input']['attributes']['request'].pop('http')
 
-    context = {'input': {}}
     if d := request['input'].pop('parsed_body', None):
         context['parsed_body'] = _dictify_lists(d)
     if d := request['input'].pop('parsed_query', None):

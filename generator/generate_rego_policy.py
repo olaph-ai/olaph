@@ -2,7 +2,8 @@ from re import split, sub
 
 def generate_rego_policy(model, data_base, policies_dir):
     not_in_quotes = '(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)'
-    rego_policy = [f"""
+    preamble = f"""package {data_base.replace('-', '_')}
+
 import input.attributes.source.address.socketAddress as source
 import input.attributes.destination.address.socketAddress as destination
 import input.attributes.request.http as request
@@ -12,7 +13,8 @@ import input.parsed_path
 import input.parsed_path
 
 default allow = false
-"""]
+"""
+    rego_policy = []
     for rule in split(rf'\n{not_in_quotes}', model):
         rule = split(rf' :- {not_in_quotes}', rule)
         if len(rule) > 1:
@@ -36,15 +38,19 @@ default allow = false
                     rego_atom.append(f'[{term}]')
                 else:
                     term = term[1:][:-1]
-                    rego_atom.append(f'.{term}')
+                    if name == 'headers':
+                        rego_atom.append(f'["{term}"]')
+                    else:
+                        rego_atom.append(f'.{term}')
             rego_atom.append(f' == {result}')
             rego_body.append(''.join(rego_atom))
+        rego_body.sort()
         rego_body = '\n    '.join(rego_body)
         rego_policy.append(f"""
 {head.strip()} {{
     {rego_body}
 }}
 """)
-    rego_policy = f"package {data_base.replace('-', '_')}\n" + '\n'.join(rego_policy)
+    rego_policy = preamble + '\n'.join(rego_policy)
     with open(f'{policies_dir}/{data_base}.rego', 'w') as f:
         f.write(rego_policy)
