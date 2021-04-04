@@ -23,7 +23,7 @@ default allow = false
             if rule[0]:
                 rego_policy.append(f"\n{rule[0].strip()[:-1]} = true\n")
             else:
-                rego_policy.pop(0)
+                preamble = ''
             break
         body_atoms = split(rf', {not_in_quotes}', body[:-1])
         rego_body = []

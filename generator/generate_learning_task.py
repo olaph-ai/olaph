@@ -94,7 +94,7 @@ def generate_learning_task(data, data_base, data_dir, tasks_dir):
     access_examples = preprocess_data(f'{data_dir}/{data}')
     example_atoms = examples_to_atoms(access_examples)
     las_examples = examples_to_las(example_atoms)
-    las_mode_bias = generate_mode_bias(example_atoms, variables_in_bias=False, examples_in_bias=False)
+    las_mode_bias = generate_mode_bias(example_atoms, variables_in_bias=False, examples_in_bias=True)
     task_path = f'{tasks_dir}/{data_base}.las'
     with open(task_path, 'w') as f:
         f.write(las_examples + '\n\n' + las_mode_bias)
