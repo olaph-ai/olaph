@@ -10,7 +10,7 @@ import input.attributes.request.http as request
 import input.attributes.request.http.headers
 import input.parsed_body
 import input.parsed_path
-import input.parsed_path
+import input.parsed_query
 
 default allow = false
 """
