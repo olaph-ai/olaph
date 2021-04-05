@@ -78,9 +78,6 @@ def generate_mode_bias(atoms, variables_in_bias, examples_in_bias):
 % Prefer rules with the maximum number of body literals in the examples
 #bias("penalty((N - {max_body_literals})**2, rule) :- N = #count{{X: in_body(X)}}.").
 
-% Prefer earlier path components
-#bias("penalty(N, body(X)) :- in_body(X), X = parsed_path(N, Y).").
-
 % Prefer certain attributes in the body of rules
 % #bias("penalty(1, body(X)) :- in_body(X), not required(X).").
 % #bias("required(X) :- in_body(X), X = parsed_path(N, Y).").
