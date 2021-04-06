@@ -15,13 +15,13 @@ import input.parsed_query
 default allow = false
 """
     rego_policy = []
-    for rule in split(rf'\n{not_in_quotes}', model):
+    for rule, confidence in model:
         rule = split(rf' :- {not_in_quotes}', rule)
         if len(rule) > 1:
             head, body = rule
         else:
             if rule[0]:
-                rego_policy.append(f"\n{rule[0].strip()[:-1]} = true\n")
+                rego_policy.append(f"\n{rule[0].strip()[:-1]}[{{\"confidence\": {round(confidence, 2)}}}] = true\n")
             else:
                 preamble = ''
             break
@@ -47,10 +47,11 @@ default allow = false
         rego_body.sort()
         rego_body = '\n    '.join(rego_body)
         rego_policy.append(f"""
-{head.strip()} {{
+{head.strip()}[{{\"confidence\": {round(confidence, 4)}}}] {{
     {rego_body}
 }}
 """)
+    rego_policy.sort(reverse=True)
     rego_policy = preamble + '\n'.join(rego_policy)
     with open(f'{policies_dir}/{data_base}.rego', 'w') as f:
         f.write(rego_policy)

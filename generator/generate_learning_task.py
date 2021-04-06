@@ -71,28 +71,27 @@ def generate_mode_bias(atoms, variables_in_bias, examples_in_bias):
     max_body_literals = max(map(lambda a: len(a[1]), atoms))
     if examples_in_bias:
         mode_bias.append(examples_to_bias(atoms))
+    body_lits_cost = lambda n: (1 * ((n - max_body_literals)**2) * len(atoms)) // (max_body_literals ** 2)
     mode_bias.append(f'''
 #modeh(allow).
 #maxv(1).
 
 % Prefer rules with the maximum number of body literals in the examples
-#bias("penalty((N - {max_body_literals})**2, rule) :- N = #count{{X: in_body(X)}}.").
+#bias("penalty((1 * ((N - {max_body_literals})**2) * {len(atoms)}) / ({max_body_literals} ** 2), rule) :- N = #count{{X: in_body(X)}}.").
 
-% Prefer certain attributes in the body of rules
-% #bias("penalty(1, body(X)) :- in_body(X), not required(X).").
-% #bias("required(X) :- in_body(X), X = parsed_path(N, Y).").
-% #bias("required(X) :- in_body(X), X = request_host(Y).").
-% #bias("required(X) :- in_body(X), X = source_address(Y).").
+% Prefer rules that cover fewer examples
+#bias("n(U) :- user(U), not user(U, BodyLit), in_body(BodyLit).").
+#bias("penalty(1, U) :- user(U), not n(U).").
 ''')
-    return '\n'.join(mode_bias)
+    return '\n'.join(mode_bias), body_lits_cost
 
 
 def generate_learning_task(data, data_base, data_dir, tasks_dir):
     access_examples = preprocess_data(f'{data_dir}/{data}')
     example_atoms = examples_to_atoms(access_examples)
     las_examples = examples_to_las(example_atoms)
-    las_mode_bias = generate_mode_bias(example_atoms, variables_in_bias=False, examples_in_bias=True)
+    las_mode_bias, body_cost = generate_mode_bias(example_atoms, variables_in_bias=False, examples_in_bias=True)
     task_path = f'{tasks_dir}/{data_base}.las'
     with open(task_path, 'w') as f:
         f.write(las_examples + '\n\n' + las_mode_bias)
-    return task_path
+    return task_path, body_cost
