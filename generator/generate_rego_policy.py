@@ -2,7 +2,7 @@ from re import split, sub
 
 def generate_rego_policy(model, data_base, policies_dir):
     not_in_quotes = '(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)'
-    preamble = f"""package {data_base.replace('-', '_')}
+    preamble = f"""package {data_base.replace('-', '')}
 
 import input.attributes.source.address.socketAddress as source
 import input.attributes.destination.address.socketAddress as destination
@@ -12,7 +12,10 @@ import input.parsed_body
 import input.parsed_path
 import input.parsed_query
 
-default allow = false
+default allow = {{
+    "allowed": false,
+    "confidence": 1
+}}
 """
     rego_policy = []
     for rule, confidence in model:
@@ -21,7 +24,12 @@ default allow = false
             head, body = rule
         else:
             if rule[0]:
-                rego_policy.append(f"\n{rule[0].strip()[:-1]}[{{\"confidence\": {round(confidence, 2)}}}] = true\n")
+                rego_policy.append(f"""
+{rule[0].strip()[:-1]} = {{
+    \"allowed\": true,
+    \"confidence\": {round(confidence, 2)}
+}}
+""")
             else:
                 preamble = ''
             break
@@ -47,8 +55,12 @@ default allow = false
         rego_body.sort()
         rego_body = '\n    '.join(rego_body)
         rego_policy.append(f"""
-{head.strip()}[{{\"confidence\": {round(confidence, 4)}}}] {{
+{head.strip()} = response {{
     {rego_body}
+    response := {{
+        \"allowed\": true,
+        \"confidence\": {round(confidence, 4)}
+    }}
 }}
 """)
     rego_policy.sort(reverse=True)
