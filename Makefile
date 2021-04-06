@@ -15,3 +15,6 @@ generate:
 								 -e DATA=synheart-controller-opa-istio.log -e DATA_DIR=/data \
 								 -e TASKS_DIR=/tasks -e MODELS_DIR=/models \
 	  								policy-generator python3 /generator/main.py
+
+eval:
+			opa eval -f pretty -i ../data/single/synheart-controller-opa-istio1.log.json -d ../policies/synheart-controller-opa-istio.rego "data.synheart_controller_opa_istio.allow"
