@@ -21,11 +21,12 @@ def run_task(task, body_cost, data_base, models_dir):
         if len(rule_s) > 1:
             head, body = rule_s
         else:
-            if rule_s[0]:
-                rule_confidences.append(1)
-            break
+            rule_confidences.append((rule, 1))
+            continue
         num_body_atoms = len(split(rf', {not_in_quotes}', body[:-1]))
-        rule_confidences.append((rule, p - 2 * body_cost(num_body_atoms)))
-    total_confidence = sum([c for _, c in rule_confidences])
-    model = [(r, (c / (total_confidence + 0.000000001))) for r, c in rule_confidences]
-    return model
+        bc, num_examples, max_body_literals = body_cost(num_body_atoms)
+        num_covered_examples = p - bc
+        bc_rescaled = (bc * num_examples) / (max_body_literals ** 2)
+        bc_conf = num_examples - bc_rescaled
+        rule_confidences.append((rule, (0.5 * num_covered_examples + 0.5 * bc_conf)/num_examples))
+    return rule_confidences
