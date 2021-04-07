@@ -24,9 +24,7 @@ def run_task(task, body_cost, data_base, models_dir):
             rule_confidences.append((rule, 1))
             continue
         num_body_atoms = len(split(rf', {not_in_quotes}', body[:-1]))
-        bc, num_examples, max_body_literals = body_cost(num_body_atoms)
+        bc, num_examples = body_cost(num_body_atoms)
         covered_examples = p - bc
-        example_coverage = covered_examples / num_examples
-        specificity = num_body_atoms / max_body_literals
-        rule_confidences.append((rule, 0.5 * example_coverage + 0.5 * specificity))
+        rule_confidences.append((rule, covered_examples / num_examples))
     return rule_confidences

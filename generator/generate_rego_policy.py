@@ -14,11 +14,11 @@ import input.parsed_query
 
 default allow = {{
     "allowed": false,
-    "confidence": 1
+    "frequency": 0
 }}
 """
     rego_policy = []
-    for rule, confidence in model:
+    for rule, frequency in sorted(model, reverse=True, key=lambda p: p[1]):
         rule = split(rf' :- {not_in_quotes}', rule)
         if len(rule) > 1:
             head, body = rule
@@ -27,7 +27,7 @@ default allow = {{
                 rego_policy.append(f"""
 {rule[0].strip()[:-1]} = {{
     \"allowed\": true,
-    \"confidence\": {round(confidence, 2)}
+    \"frequency\": {round(frequency, 4)}
 }}
 """)
             else:
@@ -59,11 +59,10 @@ default allow = {{
     {rego_body}
     response := {{
         \"allowed\": true,
-        \"confidence\": {round(confidence, 4)}
+        \"frequency\": {round(frequency, 4)}
     }}
 }}
 """)
-    rego_policy.sort(reverse=True)
     rego_policy = preamble + '\n'.join(rego_policy)
     with open(f'{policies_dir}/{data_base}.rego', 'w') as f:
         f.write(rego_policy)

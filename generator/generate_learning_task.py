@@ -71,7 +71,7 @@ def generate_mode_bias(atoms, variables_in_bias, examples_in_bias):
     max_body_literals = max(map(lambda a: len(a[1]), atoms))
     if examples_in_bias:
         mode_bias.append(examples_to_bias(atoms))
-    body_lits_cost = lambda n: ((n - max_body_literals)**2, len(atoms), max_body_literals)
+    body_lits_cost = lambda n: ((n - max_body_literals)**2, len(atoms))
     mode_bias.append(f'''
 #modeh(allow).
 #maxv(1).
