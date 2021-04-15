@@ -8,9 +8,6 @@ from preprocess import preprocess_data, flatten
 def _escape_str(s):
     return s.replace("\\", "").replace('"', '\\"')
 
-def _escape_str_bias(s):
-    return s
-
 def _val_to_las(v):
     return str(v).lower() if isinstance(v, int) else f'"{_escape_str(str(v))}"'
 

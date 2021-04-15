@@ -4,6 +4,7 @@ from re import split
 def run_task(task, body_cost, data_base, models_dir):
     not_in_quotes = '(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)'
     out = run(['FastLAS', '--d', task], capture_output=True)
+    out.check_returncode()
     debug = out.stdout.decode().strip()
     prev, rest = split(fr'Solving...{not_in_quotes}', debug)
     model = split(fr'{{{not_in_quotes}', rest)[0].strip()
