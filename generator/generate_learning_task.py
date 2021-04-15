@@ -47,18 +47,20 @@ def examples_to_las(examples):
 }}).''' for eg_id, atoms in examples])
 
 def _example_to_bias(ID, atoms):
-    return '\n'.join([f'#bias("user({ID}, {k}({", ".join(map(_escape_str, terms))})).").' for k, terms in atoms])
+    return '\n'.join([f"#bias('user({ID}, {k}({', '.join(terms)})).')." for k, terms in atoms])
 
 def examples_to_bias(examples):
-    return '\n'.join([f'#bias("user({eg_id}).").\n{_example_to_bias(eg_id, atoms)}' for eg_id, atoms in examples])
+    return '\n'.join([f"#bias('user({eg_id}).').\n{_example_to_bias(eg_id, atoms)}" for eg_id, atoms in examples])
 
 def generate_mode_bias(atoms, variables_in_bias, examples_in_bias):
     mode_bias = []
-    placeholder_types = ['const'] + (['var'] if variables_in_bias else [])
     for k, terms in reduce(lambda a, b: a + b, map(lambda a: a[1], atoms)):
-        for comb in product(placeholder_types, repeat=len(terms)):
+        combs = [['const'] * len(terms)]
+        if variables_in_bias:
+            combs.append((['const'] * (len(terms)-1)) + ['var'])
+        for comb in combs:
             placeholders = ', '.join([f'{t}({k})' for t in comb])
-            mb = f'#modeb({len(terms)}, {k}({placeholders})).'
+            mb = f'#modeb(1, {k}({placeholders})).'
             if mb not in mode_bias:
                 mode_bias.append(mb)
         for term in terms:

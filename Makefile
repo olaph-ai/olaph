@@ -19,5 +19,8 @@ generate:
 								 -e TASKS_DIR=/tasks -e MODELS_DIR=/models \
 	  								drozza/policy-generator:latest python3 /generator/main.py
 
+bash:
+			docker run -it drozza/policy-generator:latest bash
+
 eval:
 			opa eval -f pretty -i ../data/single/synheart-controller-opa-istio1.log.json -d ../policies/synheart-controller-opa-istio.rego "data.synheart_controller_opa_istio.allow"
