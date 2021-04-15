@@ -11,6 +11,8 @@ def run_task(task, body_cost, data_base, models_dir):
     model_path = f'{models_dir}/{data_base}.lp'
     with open(model_path, 'w') as f:
         f.write(model)
+    if model == 'UNSATISFIABLE':
+        raise ValueError('UNSATISFIABLE')
     # Calculate confidence
     rules = model.split('\n')
     S_Ms = split(fr'S_M:{not_in_quotes}', prev)[1].strip().split('\n')

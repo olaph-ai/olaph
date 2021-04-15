@@ -47,10 +47,10 @@ def examples_to_las(examples):
 }}).''' for eg_id, atoms in examples])
 
 def _example_to_bias(ID, atoms):
-    return '\n'.join([f"#bias('user({ID}, {k}({', '.join(terms)})).')." for k, terms in atoms])
+    return '\n'.join([f'#bias("user({ID}, {k}({", ".join(map(_escape_str, terms))})).").' for k, terms in atoms])
 
 def examples_to_bias(examples):
-    return '\n'.join([f"#bias('user({eg_id}).').\n{_example_to_bias(eg_id, atoms)}" for eg_id, atoms in examples])
+    return '\n'.join([f'#bias("user({eg_id}).").\n{_example_to_bias(eg_id, atoms)}' for eg_id, atoms in examples])
 
 def generate_mode_bias(atoms, variables_in_bias, examples_in_bias):
     mode_bias = []
