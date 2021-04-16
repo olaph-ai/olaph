@@ -50,7 +50,7 @@ default allow = {{
                         rego_atom.append(f'["{term}"]')
                     else:
                         rego_atom.append(f'.{term}')
-            rego_atom.append(f' == {result}')
+            rego_atom.append(f' = {result}')
             rego_body.append(''.join(rego_atom))
         rego_body.sort()
         rego_body = '\n    '.join(rego_body)
