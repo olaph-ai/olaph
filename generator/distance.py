@@ -21,11 +21,14 @@ def _tupleify_lists(x):
 
 def compute_distance(data, data_dir):
     data = list(map(_tupleify_lists, map(restructure_request, get_requests_from_logs(f'{data_dir}/{data}'))))
+    # data[0]['destination']['portValue'] = 9090
+    # data[0]['request']['method'] = 'POST'
     data = pd.json_normalize(data)
+    data = data.astype(str)
     data = pd.get_dummies(data)
     test, data = data[:1], data[1:]
     d = distance.cdist(test, data, 'euclidean')
-    print(d[0].min())
+    print(f'min distance: {d[0].min()}')
 
 if __name__ == '__main__':
     data = 'synheart-controller-opa-istio.log'

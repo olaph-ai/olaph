@@ -42,6 +42,7 @@ def restructure_request(request):
         request['parsed_query'] = d
     if l := request['input'].pop('parsed_path', None):
         request['parsed_path'] = l
+    request.pop('input')
     return request
 
 def _process_request(request):
