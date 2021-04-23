@@ -23,37 +23,49 @@ def _dictify_lists(x):
                 _dictify_lists(x[k])
     return x
 
-def _process_request(request):
+def restructure_request(request):
     # Remove attributes that change in every request
     request['input']['attributes']['request'].pop('time', None)
     request['input']['attributes']['request']['http'].pop('id', None)
     request['input']['attributes']['request']['http']['headers'].pop('x-request-id', None)
     request['input']['attributes']['source']['address']['socketAddress'].pop('portValue', None)
 
-    context = {'input': {}}
-
     # Shortcuts for Rego imports
     request['source'] = request['input']['attributes']['source']['address'].pop('socketAddress')
     request['destination'] = request['input']['attributes']['destination']['address'].pop('socketAddress')
-    context['headers'] = request['input']['attributes']['request']['http'].pop('headers')
+    request['headers'] = request['input']['attributes']['request']['http'].pop('headers')
     request['request'] = request['input']['attributes']['request'].pop('http')
 
     if d := request['input'].pop('parsed_body', None):
-        context['parsed_body'] = _dictify_lists(d)
+        request['parsed_body'] = d
     if d := request['input'].pop('parsed_query', None):
-        context['parsed_query'] = _dictify_lists(d)
+        request['parsed_query'] = d
     if l := request['input'].pop('parsed_path', None):
+        request['parsed_path'] = l
+    return request
+
+def _process_request(request):
+    request = restructure_request(request)
+    context = {}
+    context['headers'] = request.pop('headers')
+
+    if d := request.pop('parsed_body', None):
+        context['parsed_body'] = _dictify_lists(d)
+    if d := request.pop('parsed_query', None):
+        context['parsed_query'] = _dictify_lists(d)
+    if l := request.pop('parsed_path', None):
         context['parsed_path'] = dict(enumerate(l))
     return flatten(request), context
 
-def get_requests_from_logs(logs):
+def get_requests_from_logs(path):
+    logs = _get_logs(path)
     return list(
-        map(lambda d: _process_request({'input': d['input']}),
+        map(lambda d: {'input': d['input']},
             filter(lambda l: l['msg'] == 'Decision Log', logs)
         )
     )
 
-def preprocess_data(path):
+def _get_logs(path):
     logs = []
     with open(path, 'r') as f:
         for i, l in enumerate(f.readlines()):
@@ -64,6 +76,7 @@ def preprocess_data(path):
             except:
                 if l.replace('\n', ''):
                     print(f'error at {i}:\n{l}')
-    with open(f'{path}.json', 'w') as f:
-        f.write(json.dumps(logs, indent=4))
-    return get_requests_from_logs(logs)
+    return logs
+
+def preprocess_data(path):
+    return list(map(_process_request, get_requests_from_logs(path)))

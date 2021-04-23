@@ -4,6 +4,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update
 RUN apt-get -y install libpython2.7 gringo
+COPY requirements.txt ./requirements.txt
+RUN pip install -r requirements.txt
 RUN ln -s /lib/libclingo.so.3 /lib/libclingo.so.1
 
 RUN mkdir /tmp/fastlas

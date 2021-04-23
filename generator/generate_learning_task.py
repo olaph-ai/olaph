@@ -3,7 +3,7 @@ from itertools import groupby, product
 from functools import reduce
 from re import escape
 
-from preprocess import preprocess_data, flatten
+from preprocess import preprocess_data
 
 def _escape_str(s):
     return s.replace("\\", "").replace('"', '\\"')
@@ -25,7 +25,7 @@ def _context_to_atoms(ck, context):
     ctl_aux(context, [])
     return atoms
 
-def _example_to_atoms(example):
+def example_to_atoms(example):
     access, context = example
     atoms = []
     for k, v in access.items():
@@ -34,27 +34,25 @@ def _example_to_atoms(example):
         atoms.extend(_context_to_atoms(k, v))
     return atoms
 
-def examples_to_atoms(examples):
-    return [(f'id{i}', _example_to_atoms(example)) for i, example in enumerate(examples)]
-
 def _example_to_las(atoms):
     return '\n'.join([f'  {k}({", ".join(terms)}).' for k, terms in atoms])
 
 def examples_to_las(examples):
     return '\n'.join([f'''
-#pos(eg({eg_id}), {{allow}}, {{}}, {{
+#pos(eg(id{i}), {{allow}}, {{}}, {{
 {_example_to_las(atoms)}
-}}).''' for eg_id, atoms in examples])
+}}).''' for i, atoms in enumerate(examples)])
 
-def _example_to_bias(ID, atoms):
-    return '\n'.join([f"#bias('user({ID}, {k}({', '.join(terms)})).')." for k, terms in atoms])
+def _example_to_bias(i, atoms):
+    return '\n'.join([f"#bias('user(eg(id{i}), {k}({', '.join(terms)})).')." for k, terms in atoms])
 
 def examples_to_bias(examples):
-    return '\n'.join([f"#bias('user({eg_id}).').\n{_example_to_bias(eg_id, atoms)}" for eg_id, atoms in examples])
+    return '\n'.join([f"#bias('user(eg(id{i})).').\n{_example_to_bias(i, atoms)}"
+                      for i, atoms in enumerate(examples)])
 
 def generate_mode_bias(atoms, variables_in_bias, examples_in_bias):
     mode_bias = []
-    for k, terms in reduce(lambda a, b: a + b, map(lambda a: a[1], atoms)):
+    for k, terms in reduce(lambda a, b: a + b, atoms):
         combs = [['const'] * len(terms)]
         if variables_in_bias:
             combs.append((['const'] * (len(terms)-1)) + ['var'])
@@ -67,7 +65,7 @@ def generate_mode_bias(atoms, variables_in_bias, examples_in_bias):
             mb = f'#constant({k}, {term}).'
             if mb not in mode_bias:
                 mode_bias.append(mb)
-    max_body_literals = max(map(lambda a: len(a[1]), atoms))
+    max_body_literals = max(map(len, atoms))
     if examples_in_bias:
         mode_bias.append(examples_to_bias(atoms))
     body_lits_cost = lambda n: ((n - max_body_literals)**2, len(atoms))
@@ -88,7 +86,7 @@ def generate_mode_bias(atoms, variables_in_bias, examples_in_bias):
 
 def generate_learning_task(data, data_base, data_dir, tasks_dir):
     access_examples = preprocess_data(f'{data_dir}/{data}')
-    example_atoms = examples_to_atoms(access_examples)
+    example_atoms = list(map(example_to_atoms, access_examples))
     las_examples = examples_to_las(example_atoms)
     las_mode_bias, body_cost = generate_mode_bias(example_atoms, variables_in_bias=False, examples_in_bias=True)
     task_path = f'{tasks_dir}/{data_base}.las'
