@@ -25,6 +25,9 @@ generate:
 								 -e TASKS_DIR=/tasks -e MODELS_DIR=/models \
 	  								drozza/policy-generator:latest python3 /generator/main.py
 
+distance:
+			python3 $(shell pwd)/generator/distance.py
+
 bash:
 			docker run -v $(shell pwd)/../tasks:/tasks -v $(shell pwd)/../models:/models \
 								 -v $(shell pwd)/../policies:/policies -v $(shell pwd)/../data:/data \

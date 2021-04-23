@@ -13,7 +13,6 @@ if __name__ == '__main__':
     models_dir = os.getenv('MODELS_DIR', '../models')
     policies_dir = os.getenv('POLICIES_DIR', '../policies')
 
-    compute_distance(data, data_dir)
-    # task_path, body_cost = generate_learning_task(data, data_base, data_dir, tasks_dir)
-    # model = run_task(task_path, body_cost, data_base, models_dir)
-    # generate_rego_policy(model, data_base, policies_dir)
+    task_path, body_cost = generate_learning_task(data, data_base, data_dir, tasks_dir)
+    model = run_task(task_path, body_cost, data_base, models_dir)
+    generate_rego_policy(model, data_base, policies_dir)

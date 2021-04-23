@@ -26,3 +26,8 @@ def compute_distance(data, data_dir):
     test, data = data[:1], data[1:]
     d = distance.cdist(test, data, 'euclidean')
     print(d[0].min())
+
+if __name__ == '__main__':
+    data = 'synheart-controller-opa-istio.log'
+    data_dir = '../data'
+    compute_distance(data, data_dir)
