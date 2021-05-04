@@ -1,6 +1,6 @@
 from re import split, sub
 
-def generate_rego_policy(model, data_base, policies_dir):
+def generate_rego_policy(model, data_base):
     not_in_quotes = '(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)'
     preamble = f"""package {data_base.replace('-', '_')}
 
@@ -63,6 +63,4 @@ default allow = {{
     }}
 }}
 """)
-    rego_policy = preamble + '\n'.join(rego_policy)
-    with open(f'{policies_dir}/{data_base}.rego', 'w') as f:
-        f.write(rego_policy)
+    return preamble + '\n'.join(rego_policy)

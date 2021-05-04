@@ -33,10 +33,10 @@ def _restructure_request(request):
         user_input['parsed_path'] = l
     return flatten(request), flatten(user_input)
 
-def get_requests_from_logs(path, max_examples):
+def get_requests_from_logs(path):
     logs = _get_logs(path)
-    return list(map(lambda d: _restructure_request({'input': d['input']}),
-                        list(filter(lambda l: l['msg'] == 'Decision Log', logs))[:max_examples]
+    return list(map(lambda d: {'input': d['input']},
+                        list(filter(lambda l: l['msg'] == 'Decision Log', logs))
                     ))
 
 def _get_logs(path):
@@ -79,10 +79,10 @@ def select_features(data, max_attributes):
     user_input, _ = _select_features(user_input, max_attributes - n_features)
     return zip(requests, user_input)
 
-def process_examples(path, max_attributes, max_examples):
-    data = get_requests_from_logs(path, max_examples)
-    return select_features(data, max_attributes)
+def process_examples(requests, max_attributes):
+    restructured = list(map(_restructure_request, requests))
+    return select_features(restructured, max_attributes)
 
-def preprocess_data(path, max_attributes, max_examples):
-    examples = process_examples(path, max_attributes, max_examples)
+def preprocess_data(requests, max_attributes):
+    examples = process_examples(requests, max_attributes)
     return list(map(example_to_atoms, examples))

@@ -35,3 +35,4 @@ if __name__ == '__main__':
     data = 'synheart-controller-opa-istio.log'
     data_dir = '../data'
     compute_distance(data, data_dir)
+window_size

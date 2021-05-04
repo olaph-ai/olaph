@@ -21,8 +21,9 @@ output:
 generate:
 	    docker run -v $(shell pwd)/../tasks:/tasks -v $(shell pwd)/../models:/models \
 								 -v $(shell pwd)/../policies:/policies -v $(shell pwd)/../data:/data \
+								 -v $(shell pwd)/../diffs:/diffs \
 								 -e DATA=synheart-controller-opa-istio.log -e DATA_DIR=/data \
-								 -e TASKS_DIR=/tasks -e MODELS_DIR=/models \
+								 -e TASKS_DIR=/tasks -e MODELS_DIR=/models -e DIFFS_DIR=/diffs \
 	  								drozza/policy-generator:latest python3 /generator/main.py
 
 distance:
@@ -31,6 +32,7 @@ distance:
 bash:
 			docker run -v $(shell pwd)/../tasks:/tasks -v $(shell pwd)/../models:/models \
 								 -v $(shell pwd)/../policies:/policies -v $(shell pwd)/../data:/data \
+								 -v $(shell pwd)/../diffs:/diffs \
 								 -it drozza/policy-generator:latest bash
 
 eval:

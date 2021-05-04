@@ -57,11 +57,9 @@ def generate_mode_bias(atoms, variables_in_bias, examples_in_bias):
     return '\n'.join(mode_bias), body_lits_cost
 
 
-def generate_learning_task(data, data_base, data_dir, tasks_dir, max_attributes, max_examples):
-    example_atoms = preprocess_data(f'{data_dir}/{data}', max_attributes, max_examples)
+def generate_learning_task(requests, max_attributes):
+    example_atoms = preprocess_data(requests, max_attributes)
     las_examples = examples_to_las(example_atoms)
     las_mode_bias, body_cost = generate_mode_bias(example_atoms, variables_in_bias=False, examples_in_bias=True)
-    task_path = f'{tasks_dir}/{data_base}.las'
-    with open(task_path, 'w') as f:
-        f.write(las_examples + '\n\n' + las_mode_bias)
-    return task_path, body_cost
+    task = las_examples + '\n\n' + las_mode_bias
+    return task, body_cost

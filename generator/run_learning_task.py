@@ -1,23 +1,25 @@
 from subprocess import run
 from re import split
 
-def run_task(task, body_cost, data_base, models_dir):
+def run_task(task, body_cost):
     not_in_quotes = '(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)'
     out = run(['FastLAS', '--d', task], capture_output=True)
     out.check_returncode()
     debug = out.stdout.decode().strip()
     prev, rest = split(fr'Solving\.\.\.{not_in_quotes}', debug)
     model = split(fr'{{{not_in_quotes}', rest)[0].strip()
-    model_path = f'{models_dir}/{data_base}.lp'
-    with open(model_path, 'w') as f:
-        f.write(model)
     if model == 'UNSATISFIABLE':
         raise ValueError('UNSATISFIABLE')
-    # Calculate confidence
+    rule_penalties = get_penalties(model, prev, not_in_quotes)
+    return model, get_confidences(rule_penalties, body_cost, not_in_quotes)
+
+def get_penalties(model, prev, not_in_quotes):
     rules = model.split('\n')
     S_Ms = split(fr'S_M:{not_in_quotes}', prev)[1].strip().split('\n')
     S_Ms = [split(fr' ~ {not_in_quotes}', S_M) for S_M in S_Ms]
-    rule_penalties = [(r, int(p)) for p, r in S_Ms if r in rules]
+    return [(r, int(p)) for p, r in S_Ms if r in rules]
+
+def get_confidences(rule_penalties, body_cost, not_in_quotes):
     rule_confidences = []
     for rule, p in rule_penalties:
         rule_s = split(rf' :- {not_in_quotes}', rule)
