@@ -6,7 +6,7 @@ def run_task(task, body_cost, data_base, models_dir):
     out = run(['FastLAS', '--d', task], capture_output=True)
     out.check_returncode()
     debug = out.stdout.decode().strip()
-    prev, rest = split(fr'Solving...{not_in_quotes}', debug)
+    prev, rest = split(fr'Solving\.\.\.{not_in_quotes}', debug)
     model = split(fr'{{{not_in_quotes}', rest)[0].strip()
     model_path = f'{models_dir}/{data_base}.lp'
     with open(model_path, 'w') as f:

@@ -1,5 +1,5 @@
 import pandas as pd
-from preprocess import get_requests_from_logs, restructure_request
+from preprocess import process_examples
 from scipy.spatial import distance
 
 def _tupleify_lists(x):
@@ -12,15 +12,20 @@ def _tupleify_lists(x):
     return x
 
 def compute_distance(data, data_dir):
-    data = list(map(_tupleify_lists, map(restructure_request, get_requests_from_logs(f'{data_dir}/{data}'))))
-
+    # data = list(map(_tupleify_lists, map(restructure_request, get_requests_from_logs(f'{data_dir}/{data}'))))
+    # data = process_requests_from_logs(f'{data_dir}/{data}', max_attributes=30, max_examples=5000)
+    data = process_examples(f'{data_dir}/{data}', max_attributes=30, max_examples=5000)
+    data = list(map(lambda r: r[0] | r[1], data))
     # Perturb input for testing
-    data[0]['destination']['portValue'] = 9090
-    data[0]['request']['method'] = 'POST'
+    # data[0]['destination']['portValue'] = 9090
+    # data[0]['request']['method'] = 'POST'
 
-    data = pd.json_normalize(data)
+    data = pd.DataFrame(data)
+    print(data)
+    print(data.columns)
     data = data.astype(str)
     data = pd.get_dummies(data)
+    print(data)
     test, data = data[:1], data[1:]
     d = distance.cdist(test, data, 'euclidean')[0]
     d = d.min()

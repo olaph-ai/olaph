@@ -2,7 +2,6 @@ import os
 from generate_learning_task import generate_learning_task
 from run_learning_task import run_task
 from generate_rego_policy import generate_rego_policy
-from distance import compute_distance
 
 if __name__ == '__main__':
     data = os.getenv('DATA', 'synheart-controller-opa-istio.log')
@@ -13,6 +12,9 @@ if __name__ == '__main__':
     models_dir = os.getenv('MODELS_DIR', '../models')
     policies_dir = os.getenv('POLICIES_DIR', '../policies')
 
-    task_path, body_cost = generate_learning_task(data, data_base, data_dir, tasks_dir)
+    max_attributes = 30
+    max_examples = 500
+
+    task_path, body_cost = generate_learning_task(data, data_base, data_dir, tasks_dir, max_attributes, max_examples)
     model = run_task(task_path, body_cost, data_base, models_dir)
     generate_rego_policy(model, data_base, policies_dir)
