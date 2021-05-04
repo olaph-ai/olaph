@@ -10,7 +10,7 @@ learn:
 	    docker run -v $(shell pwd)/../tasks:/tasks -v $(shell pwd)/../models:/models \
 								 -e TASKS_DIR=/tasks -e MODELS_DIR=/models \
 	  								drozza/policy-generator:latest \
-										FastLAS --d /tasks/synheart-controller-opa-istio.las > ../models/synheart-controller-opa-istio.lp
+										FastLAS --d /tasks/synheart-controller-opa-istio1.las > ../models/synheart-controller-opa-istio1.lp
 
 output:
 	    docker run -v $(shell pwd)/../tasks:/tasks -v $(shell pwd)/../models:/models \

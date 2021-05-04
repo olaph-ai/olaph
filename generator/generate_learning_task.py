@@ -8,9 +8,20 @@ def _escape_str_bias(s):
 def _example_to_las(atoms):
     return '\n'.join([f'  {k}({", ".join(terms)}).' for k, terms in atoms])
 
-def examples_to_las(examples):
+def get_example_penalty(distances, i):
+    if distances is not None:
+        # dmin = distances.min()
+        # dmax = distances.max()
+        # dnorm = 1 + (((distances[i] - dmin) * (100 - 1)) / (dmax - dmin))
+        # distance = int(dnorm)
+        distance = int(distances[i] * 100)
+        return f'@{distance}'
+    else:
+        return ''
+
+def examples_to_las(examples, distances):
     return '\n'.join([f'''
-#pos(eg(id{i}), {{allow}}, {{}}, {{
+#pos(eg(id{i}){get_example_penalty(distances, i)}, {{allow}}, {{}}, {{
 {_example_to_las(atoms)}
 }}).''' for i, atoms in enumerate(examples)])
 
@@ -57,9 +68,9 @@ def generate_mode_bias(atoms, variables_in_bias, examples_in_bias):
     return '\n'.join(mode_bias), body_lits_cost
 
 
-def generate_learning_task(requests, max_attributes):
+def generate_learning_task(requests, distances, max_attributes):
     example_atoms = preprocess_data(requests, max_attributes)
-    las_examples = examples_to_las(example_atoms)
+    las_examples = examples_to_las(example_atoms, distances)
     las_mode_bias, body_cost = generate_mode_bias(example_atoms, variables_in_bias=False, examples_in_bias=True)
     task = las_examples + '\n\n' + las_mode_bias
     return task, body_cost

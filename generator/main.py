@@ -1,12 +1,14 @@
 import os
+from copy import deepcopy
 from glob import glob
-import logging
 from datetime import datetime
 import difflib as dl
 from generate_learning_task import generate_learning_task
 from run_learning_task import run_task
 from generate_rego_policy import generate_rego_policy
 from preprocess import get_requests_from_logs
+from distance import compute_distances
+import logging
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -35,10 +37,13 @@ if __name__ == '__main__':
     differ = dl.HtmlDiff(tabsize=16)
     all_requests = get_requests_from_logs(f'{data_dir}/{data}')
     prev_time = None
+    prev_requests = None
     for i, w in enumerate(range(0, len(all_requests), window_size)):
-        log.info(f'Processing window {i}/{len(all_requests)//window_size}...')
+        log.info(f'Learning a policy for window {i}/{len(all_requests)//window_size}...')
         requests = all_requests[w:w+window_size]
-        task, body_cost = generate_learning_task(requests, max_attributes)
+        distances = compute_distances(prev_requests, requests) if prev_requests else None
+        prev_requests = deepcopy(requests)
+        task, body_cost = generate_learning_task(requests, distances, max_attributes)
         task_path = f'{tasks_dir}/{data_base}{i}.las'
         with open(task_path, 'w') as f:
             f.write(task)
