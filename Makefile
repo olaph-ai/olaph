@@ -22,7 +22,7 @@ generate:
 	    docker run -v $(shell pwd)/../tasks:/tasks -v $(shell pwd)/../models:/models \
 								 -v $(shell pwd)/../policies:/policies -v $(shell pwd)/../data:/data \
 								 -v $(shell pwd)/../diffs:/diffs \
-								 -e DATA=synheart-controller-opa-istio.log -e DATA_DIR=/data \
+								 -e DATA=monitoring-grafana.log -e DATA_DIR=/data \
 								 -e TASKS_DIR=/tasks -e MODELS_DIR=/models -e DIFFS_DIR=/diffs \
 	  								drozza/policy-generator:latest python3 /generator/main.py
 
@@ -36,4 +36,4 @@ bash:
 								 -it drozza/policy-generator:latest bash
 
 eval:
-			opa eval -f pretty -i ../data/single/synheart-controller-opa-istio1.log.json -d ../policies/synheart-controller-opa-istio.rego "data.synheart_controller_opa_istio.allow"
+			opa eval -f pretty -i ../data/single/synheart-controller-opa-istio1.log.json -d ../policies/synheart-controller-opa-istio0.rego "data.synheart_controller_opa_istio.allow"

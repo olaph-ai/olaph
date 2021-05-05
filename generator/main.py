@@ -10,7 +10,7 @@ from preprocess import get_requests_from_logs
 from distance import compute_distances
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(name)s: %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
 def clear_dir(path):
@@ -31,34 +31,35 @@ if __name__ == '__main__':
     diffs_dir = os.getenv('DIFFS_DIR', '../diffs')
     clear_dir(diffs_dir)
 
-    max_attributes = 20
-    window_size = 300
-
-    differ = dl.HtmlDiff(tabsize=16)
     all_requests = get_requests_from_logs(f'{data_dir}/{data}')
+    max_attributes = 20
+    window_size = 500
+
+    differ = dl.HtmlDiff(wrapcolumn=80)
     prev_time = None
     prev_requests = None
+    num_windows = (len(all_requests)//window_size)+1
     for i, w in enumerate(range(0, len(all_requests), window_size)):
-        log.info(f'Learning a policy for window {i}/{len(all_requests)//window_size}...')
         requests = all_requests[w:w+window_size]
-        distances = compute_distances(prev_requests, requests) if prev_requests else None
+        log.info(f'Learning a policy for window {i+1}/{num_windows} of size {len(requests)}...')
+        distances = compute_distances(deepcopy(requests), prev_requests, max_attributes) if prev_requests else None
         prev_requests = deepcopy(requests)
         task, body_cost = generate_learning_task(requests, distances, max_attributes)
-        task_path = f'{tasks_dir}/{data_base}{i}.las'
+        task_path = f'{tasks_dir}/{data_base}{i+1}.las'
         with open(task_path, 'w') as f:
             f.write(task)
         model, rule_confidences = run_task(task_path, body_cost)
-        with open(f'{models_dir}/{data_base}{i}.lp', 'w') as f:
+        with open(f'{models_dir}/{data_base}{i+1}.lp', 'w') as f:
             f.write(model)
         new_policy = generate_rego_policy(rule_confidences, data_base)
-        with open(f'{policies_dir}/{data_base}{i}.rego', 'w') as f:
+        with open(f'{policies_dir}/{data_base}{i+1}.rego', 'w') as f:
             f.write(new_policy)
+        now = datetime.now().strftime("%d/%m/%Y at %H:%M:%S")
+        now_time = f'{data_base} on {now}'
         if i > 0:
-            with open(f'{policies_dir}/{data_base}{i-1}.rego', 'r') as f:
+            with open(f'{policies_dir}/{data_base}{i}.rego', 'r') as f:
                 prev_policy = f.readlines()
-            with open(f'{diffs_dir}/{data_base}{i-1}_{i}.html', 'w') as f:
-                now = datetime.now().strftime("%d/%m/%Y at %H:%M:%S")
-                now_time = f'{data_base} on {now}'
+            with open(f'{diffs_dir}/{data_base}{i}_{i+1}.html', 'w') as f:
                 f.write(differ.make_file(prev_policy, new_policy.splitlines(True),
                                          fromdesc=prev_time, todesc=now_time))
-                prev_time = now_time
+        prev_time = now_time

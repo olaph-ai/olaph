@@ -17,6 +17,12 @@ def flatten(request):
     return example
 
 def _restructure_request(request):
+    # Remove redundant attributes
+    request['input']['attributes']['request'].pop('time')
+    request['input']['attributes']['request']['http'].pop('id')
+    request['input']['attributes']['request']['http'].pop('path')
+    request['input'].pop('truncated_body')
+    request['input'].pop('version')
     # Shortcuts for Rego imports
     request['source'] = request['input']['attributes']['source']['address'].pop('socketAddress')
     request['destination'] = request['input']['attributes']['destination']['address'].pop('socketAddress')
