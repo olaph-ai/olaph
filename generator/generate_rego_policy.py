@@ -18,7 +18,7 @@ default allow = {{
 }}
 """
     rego_policy = []
-    for rule, frequency in sorted(model, key=lambda p: len(p[0])):
+    for rule, frequency in sorted(model, reverse=True, key=lambda p: p[1]):
         rule = split(rf' :- {not_in_quotes}', rule)
         if len(rule) > 1:
             head, body = rule
@@ -46,7 +46,7 @@ default allow = {{
                     rego_atom.append(f'[{term}]')
                 else:
                     term = term[1:][:-1]
-                    if name == 'headers':
+                    if name in ['headers', 'parsed_query', 'parsed_body']:
                         rego_atom.append(f'["{term}"]')
                     else:
                         rego_atom.append(f'.{term}')

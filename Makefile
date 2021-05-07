@@ -21,8 +21,8 @@ output:
 generate:
 	    docker run -v $(shell pwd)/../tasks:/tasks -v $(shell pwd)/../models:/models \
 								 -v $(shell pwd)/../policies:/policies -v $(shell pwd)/../data:/data \
-								 -v $(shell pwd)/../diffs:/diffs \
-								 -e DATA=monitoring-grafana.log -e DATA_DIR=/data \
+								 -v $(shell pwd)/../diffs:/diffs -v $(shell pwd)/../plots:/plots \
+								 -e DATA=monitoring-grafana-more.log -e DATA_DIR=/data -e PLOTS_DIR=/plots \
 								 -e TASKS_DIR=/tasks -e MODELS_DIR=/models -e DIFFS_DIR=/diffs \
 	  								drozza/policy-generator:latest python3 /generator/main.py
 

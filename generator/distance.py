@@ -7,19 +7,27 @@ import logging
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
+def _process(data, max_attributes):
+    processed = process_examples(data, max_attributes)
+    return list(map(lambda p: p[0] | p[1], processed))
+
+def _preprocess(requests, prev_requests, max_attributes):
+    requests = _process(requests, max_attributes)
+    prev_requests = _process(prev_requests, max_attributes)
+    processed = pd.DataFrame(requests + prev_requests).astype(str)
+    one_hot = pd.get_dummies(processed)
+    return one_hot[:len(requests)], one_hot[len(requests):]
+
 def compute_distances(requests, prev_requests, max_attributes):
-    len_requests = len(requests)
-    processed = process_examples(requests + prev_requests, max_attributes)
-    processed = pd.DataFrame(list(map(lambda p: p[0] | p[1], processed)))
-    data = processed.astype(str)
-    data = pd.get_dummies(data)
-    requests, prev_requests = data[:len_requests], data[len_requests:]
-    d = distance.cdist(requests, prev_requests, 'euclidean')
-    d = d.min(axis=1)
-    return d
+    requests, prev_requests = _preprocess(requests, prev_requests, max_attributes)
+    return distance.cdist(requests, prev_requests, 'euclidean').min(axis=1)
+
+def compute_hd_distance(requests, prev_requests, max_attributes):
+    requests, prev_requests = _preprocess(requests, prev_requests, max_attributes)
+    return distance.directed_hausdorff(requests, prev_requests)[0]
 
 if __name__ == '__main__':
     logging.basicConfig()
     all_requests = get_requests_from_logs(f'../data/synheart-controller-opa-istio.log')
-    ds = compute_distances(all_requests[3000:], all_requests[2000:3000], 20)
-    # print(np.unique(ds))
+    requests, prev_requests = all_requests[40:50], all_requests[:40]
+    ds = compute_distances(requests, prev_requests, 20)
