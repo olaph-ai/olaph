@@ -1,5 +1,7 @@
 paths:
   data: synth-heart11.log
+  # allow_list: synth-heart11-allow.log
+  # block_list: synth-heart11-block.log
   data_dir: /data
   tasks_dir: /tasks
   models_dir: /models

@@ -2,7 +2,8 @@ from re import split, sub
 
 def generate_rego_policy(model, data_base):
     not_in_quotes = '(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)'
-    preamble = f"""package {data_base.replace('-', '_')}
+    package = data_base.replace('-', '_')
+    preamble = f"""package {package}
 
 import input.attributes.source.address.socketAddress as source
 import input.attributes.destination.address.socketAddress as destination
@@ -63,4 +64,4 @@ default allow = {{
     }}
 }}
 """)
-    return preamble + '\n'.join(rego_policy)
+    return preamble + '\n'.join(rego_policy), package

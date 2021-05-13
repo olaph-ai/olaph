@@ -13,6 +13,7 @@ from run_learning_task import run_task
 from generate_rego_policy import generate_rego_policy
 from preprocess import get_requests_from_logs
 from distance import compute_distances, compute_hd_distance
+from run_opa import get_opa_denies
 import logging
 
 logging.basicConfig(level=logging.INFO, format='%(name)s: %(levelname)s - %(message)s')
@@ -30,18 +31,22 @@ def generate_policy(requests, distances, max_attributes, generalisation, name, t
     model, rule_confidences = run_task(task_path, body_cost)
     with open(f'{models_dir}/{name}.lp', 'w') as f:
         f.write(model)
-    new_policy = generate_rego_policy(rule_confidences, data_base)
-    with open(f'{policies_dir}/{name}.rego', 'w') as f:
+    new_policy, package = generate_rego_policy(rule_confidences, data_base)
+    new_policy_path = f'{policies_dir}/{name}.rego'
+    with open(new_policy_path, 'w') as f:
         f.write(new_policy)
     now = datetime.now().strftime("%d/%m/%Y at %H:%M:%S")
     now_time = f'{name} on {now}'
-    return new_policy, now_time
+    return new_policy_path, now_time, package
 
-def generate_policy_diff(new_policy, new_policy_time, curr_policy, curr_policy_time, i,
+def generate_policy_diff(new_policy_path, new_policy_time, curr_policy_path, curr_policy_time, i,
                          name, policies_dir, diffs_dir):
+    with open(new_policy_path, 'r') as f:
+        new_policy = f.readlines()
+    with open(curr_policy_path, 'r') as f:
+        curr_policy = f.readlines()
     with open(f'{diffs_dir}/{name}.html', 'w') as f:
-        f.write(differ.make_file(curr_policy.splitlines(True), new_policy.splitlines(True),
-                                 fromdesc=curr_policy_time, todesc=new_policy_time))
+        f.write(differ.make_file(curr_policy, new_policy, fromdesc=curr_policy_time, todesc=new_policy_time))
 
 if __name__ == '__main__':
     with open(os.getenv('CONFIG'), 'r') as f:
@@ -71,12 +76,14 @@ if __name__ == '__main__':
     log.info(f'Total requests: {len(all_requests)}')
 
     learned_requests, learned_distances = all_requests[0:window_size], [1] * window_size
-    curr_policy, curr_policy_time = generate_policy(deepcopy(learned_requests), learned_distances, max_attributes,
-                                                    generalisation, f'{data_base}_1',
-                                                    tasks_dir, models_dir, policies_dir)
+    curr_policy_path, curr_policy_time, curr_package = generate_policy(
+        deepcopy(learned_requests), learned_distances, max_attributes,
+        generalisation, f'{data_base}_1', tasks_dir, models_dir, policies_dir
+    )
     next_set = []
     avg_distances = []
     relearn_windows = []
+    denies = []
     cooldown = 0
     p_i, w_i = 2, 2
     window = all_requests[(w_i-1) * window_size:w_i * window_size]
@@ -90,21 +97,25 @@ if __name__ == '__main__':
         distances = compute_distances(deepcopy(window), deepcopy(learned_requests), max_attributes)
         next_set.append(list(zip(window, distances)))
         if w_i > warm_up:
+            num_denies = get_opa_denies(window, curr_policy_path, curr_package)
+            denies.append((w_i, num_denies))
             hd_distances = list(map(lambda w: max(filter(None, list(zip(*w))[1])), next_set))
             avg_distance = sum(hd_distances) / len(hd_distances)
             avg_distances.append((w_i, avg_distance))
-            log.info(f'Window {w_i} - Avg max distance: {avg_distance}, window_size: {len(window)}, '
-                     f'learned_size: {len(learned_requests)}, next_size: {sum(map(len, next_set))}')
+            log.info(f'Window {w_i:3d} - Avg max distance: {avg_distance:.4f}, window_size: {len(window)}, '
+                     f'learned_size: {len(learned_requests)}, next_size: {sum(map(len, next_set))}, '
+                     f'denies: {num_denies}')
             if avg_distance > relearn_threshold and cooldown == 0:
                 log.info(f'Relearn policy as avg max distance {avg_distance} > {relearn_threshold} and not on CD')
                 next_requests, next_distances = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
-                new_policy, new_policy_time = generate_policy(deepcopy(next_requests), next_distances,
-                                                              max_attributes, generalisation, f'{data_base}_{p_i}',
-                                                              tasks_dir, models_dir, policies_dir)
-                generate_policy_diff(new_policy, new_policy_time, curr_policy, curr_policy_time, p_i,
+                new_policy_path, new_policy_time, new_package = generate_policy(
+                    deepcopy(next_requests), next_distances, max_attributes,
+                    generalisation, f'{data_base}_{p_i}', tasks_dir, models_dir, policies_dir
+                )
+                generate_policy_diff(new_policy_path, new_policy_time, curr_policy_path, curr_policy_time, p_i,
                                      f'{data_base}_{p_i-1}-{p_i}', policies_dir, diffs_dir)
                 relearn_windows.append((w_i, avg_distance))
-                curr_policy, curr_policy_time = new_policy, new_policy_time
+                curr_policy_path, curr_policy_time, curr_package = new_policy_path, new_policy_time, new_package
                 learned_requests = next_requests
                 cooldown = len(hd_distances)
                 p_i += 1
@@ -123,3 +134,7 @@ if __name__ == '__main__':
     plt.xlabel(f'Window ({window_size} requests)')
     plt.ylabel(f'Average max distance (approx over the last {len(hd_distances)} windows)')
     plt.savefig(f'{plots_dir}/{data_base}-req_dist-{str(relearn_threshold).replace(".", "_")}.png')
+    plt.clf()
+    x, w_denies = zip(*denies)
+    plt.plot(x, w_denies)
+    plt.savefig(f'{plots_dir}/{data_base}-denies-{str(relearn_threshold).replace(".", "_")}.png')

@@ -22,7 +22,7 @@ generate:
 	    docker run -v $(shell pwd)/../tasks:/tasks -v $(shell pwd)/../models:/models \
 								 -v $(shell pwd)/../policies:/policies -v $(shell pwd)/../data:/data \
 								 -v $(shell pwd)/../diffs:/diffs -v $(shell pwd)/../plots:/plots \
-							   -e CONFIG=/config/config.yaml \
+                 -v $(shell pwd)/config:/config -e CONFIG=/config/config.yaml \
 	  								drozza/policy-generator:latest python3 /generator/main.py
 
 distance:
@@ -34,5 +34,7 @@ bash:
 								 -v $(shell pwd)/../diffs:/diffs \
 								 -it drozza/policy-generator:latest bash
 
+# eval:
+# 			opa eval -f pretty -i ../data/single/synheart-controller-opa-istio1.log.json -d ../policies/synheart-controller-opa-istio0.rego "data.synheart_controller_opa_istio.allow"
 eval:
-			opa eval -f pretty -i ../data/single/synheart-controller-opa-istio1.log.json -d ../policies/synheart-controller-opa-istio0.rego "data.synheart_controller_opa_istio.allow"
+			opa eval -i ../data/single/synth-heart11-single.json -d ../policies/synth-heart11_1.rego "data.synth_heart11.allow"
