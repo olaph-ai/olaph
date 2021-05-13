@@ -1,0 +1,16 @@
+paths:
+  data: synth-heart3.log
+  data_dir: /data
+  tasks_dir: /tasks
+  models_dir: /models
+  policies_dir: /policies
+  diffs_dir: /diffs
+  plots_dir: /plots
+settings:
+  max_attributes: 20
+  window_size: 100
+  relearn_threshold: 2
+  generalisation: 1
+  decay: 0.5
+  drop_threshold: 0.1
+  warm_up: 20

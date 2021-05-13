@@ -1,4 +1,5 @@
 import os
+from functools import reduce
 from copy import deepcopy
 from glob import glob
 from datetime import datetime
@@ -6,6 +7,7 @@ from collections import deque
 import difflib as dl
 import numpy as np
 import matplotlib.pyplot as plt
+import yaml
 from generate_learning_task import generate_learning_task
 from run_learning_task import run_task
 from generate_rego_policy import generate_rego_policy
@@ -16,12 +18,12 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(name)s: %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
-def clear_dir(path):
-    for f in glob(f'{path}/*'):
+def clear_dir(path, name):
+    for f in glob(f'{path}/{name}*'):
         os.remove(f)
 
-def generate_policy(requests, distances, max_attributes, name, tasks_dir, models_dir, policies_dir):
-    task, body_cost = generate_learning_task(requests, distances, max_attributes)
+def generate_policy(requests, distances, max_attributes, generalisation, name, tasks_dir, models_dir, policies_dir):
+    task, body_cost = generate_learning_task(requests, distances, max_attributes, generalisation)
     task_path = f'{tasks_dir}/{name}.las'
     with open(task_path, 'w') as f:
         f.write(task)
@@ -42,80 +44,88 @@ def generate_policy_diff(new_policy, new_policy_time, curr_policy, curr_policy_t
                                  fromdesc=curr_policy_time, todesc=new_policy_time))
 
 if __name__ == '__main__':
-    data = os.getenv('DATA', 'synheart-controller-opa-istio.log')
+    with open(os.getenv('CONFIG'), 'r') as f:
+        config = yaml.safe_load(f)
+
+    data = config['paths']['data']
     data_base = data.rsplit('.', 1)[0]
 
-    data_dir = os.getenv('DATA_DIR', '../data')
-    tasks_dir = os.getenv('TASKS_DIR', '../tasks')
-    clear_dir(tasks_dir)
-    models_dir = os.getenv('MODELS_DIR', '../models')
-    clear_dir(models_dir)
-    policies_dir = os.getenv('POLICIES_DIR', '../policies')
-    clear_dir(policies_dir)
-    diffs_dir = os.getenv('DIFFS_DIR', '../diffs')
-    clear_dir(diffs_dir)
-    plots_dir = os.getenv('PLOTS_DIR', '../plots')
-    # clear_dir(plots_dir)
+    data_dir = config['paths']['data_dir']
+    tasks_dir = config['paths']['tasks_dir']
+    models_dir = config['paths']['models_dir']
+    policies_dir = config['paths']['policies_dir']
+    diffs_dir = config['paths']['diffs_dir']
+    plots_dir = config['paths']['plots_dir']
 
-    max_attributes = 20
-    window_size = 50
-    max_learning_window_size = 1000
-    relearn_threshold = 3.5
-
+    max_attributes = int(config['settings']['max_attributes'])
+    window_size = int(config['settings']['window_size'])
+    relearn_threshold = float(config['settings']['relearn_threshold'])
+    generalisation = int(config['settings']['generalisation'])
+    decay = float(config['settings']['decay'])
+    drop_threshold = float(config['settings']['drop_threshold'])
+    warm_up = int(config['settings']['warm_up'])
+    # max_attributes = int(input(f'Max attributes [{max_attributes}]: ') or max_attributes)
+    # window_size = int(input(f'Window size [{window_size}]: ') or window_size)
+    # relearn_threshold = float(input(f'Relearn threshold [{relearn_threshold}]: ') or relearn_threshold)
+    # generalisation = int(input(f'Generalisation [{generalisation}]: ') or generalisation)
+    # decay = float(input(f'Example decay [{decay}]: ') or decay)
+    # drop_threshold = float(input(f'Example drop threshold [{drop_threshold}]: ') or drop_threshold)
     differ = dl.HtmlDiff(wrapcolumn=80)
 
     all_requests = get_requests_from_logs(f'{data_dir}/{data}')
     log.info(f'Total requests: {len(all_requests)}')
-    learning_set = all_requests[:window_size]
-    curr_policy, curr_policy_time = generate_policy(deepcopy(learning_set), None, max_attributes, f'{data_base}_1',
-                                                    tasks_dir, models_dir, policies_dir)
 
-    learning_window_start = window_size
-    window_start = learning_window_start
-    window_end = learning_window_start + window_size
-    request_distances = deque(maxlen=max_learning_window_size)
-    window = all_requests[window_start:window_end]
-    hd_maxlen = max_learning_window_size // window_size
-    hd_distances = deque(maxlen=hd_maxlen)
+    learned_requests, learned_distances = all_requests[0:window_size], [1] * window_size
+    curr_policy, curr_policy_time = generate_policy(deepcopy(learned_requests), learned_distances, max_attributes,
+                                                    generalisation, f'{data_base}_1',
+                                                    tasks_dir, models_dir, policies_dir)
+    next_set = []
     avg_distances = []
-    p_i, w_i = 1, 1
     relearn_windows = []
     cooldown = 0
+    p_i, w_i = 2, 2
+    window = all_requests[(w_i-1) * window_size:w_i * window_size]
     while window:
-        w_i += 1
         cooldown = max(0, cooldown - 1)
-        distances = compute_distances(deepcopy(window), deepcopy(learning_set), max_attributes)
-        request_distances.extend(distances)
-        hd_distances.append(distances.max())
-        avg_distance = sum(hd_distances) / hd_maxlen
-        avg_distances.append((w_i, avg_distance))
-        log.info(f'Window {w_i} - Avg distance: {avg_distance}, w_size: {len(window)}, l_size: {len(learning_set)}')
-        if avg_distance > relearn_threshold and cooldown == 0:
-            p_i += 1
-            log.info(f'Relearning policy as avg distance {avg_distance} > {relearn_threshold} and not on cooldown')
-            learning_set = all_requests[learning_window_start:window_end]
-            new_policy, new_policy_time = generate_policy(deepcopy(learning_set), request_distances, max_attributes,
-                                                          f'{data_base}_{p_i}', tasks_dir, models_dir, policies_dir)
-            request_distances.clear()
-            relearn_windows.append((w_i, avg_distance))
-            learning_window_start = window_end
-            generate_policy_diff(new_policy, new_policy_time, curr_policy, curr_policy_time, p_i,
-                                 f'{data_base}_{p_i-1}-{p_i}', policies_dir, diffs_dir)
-            curr_policy, curr_policy_time = new_policy, new_policy_time
-            cooldown = hd_maxlen
-        window_start += window_size
-        window_end += window_size
-        if window_end - learning_window_start > max_learning_window_size:
-            learning_window_start = window_end - max_learning_window_size
-        window = all_requests[window_start:window_end]
+        next_set = list(filter(None,  # Remove empty lists
+                               map(lambda w: [(r, decay * d) if d is not None else (r, None) for (r, d) in w
+                                              if d is None or d > drop_threshold],  # Decay examples
+                                   next_set)
+                               ))
+        distances = compute_distances(deepcopy(window), deepcopy(learned_requests), max_attributes)
+        next_set.append(list(zip(window, distances)))
+        if w_i > warm_up:
+            hd_distances = list(map(lambda w: max(filter(None, list(zip(*w))[1])), next_set))
+            avg_distance = sum(hd_distances) / len(hd_distances)
+            avg_distances.append((w_i, avg_distance))
+            log.info(f'Window {w_i} - Avg distance: {avg_distance}, w_size: {len(window)}, '
+                     f'l_size: {len(learned_requests)}, n_size: {sum(map(len, next_set))}')
+            if avg_distance > relearn_threshold and cooldown == 0:
+                log.info(f'Relearning policy as avg distance {avg_distance} > {relearn_threshold} and not on '
+                         'cooldown/warmup')
+                next_requests, next_distances = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
+                new_policy, new_policy_time = generate_policy(deepcopy(next_requests), next_distances,
+                                                              max_attributes, generalisation, f'{data_base}_{p_i}',
+                                                              tasks_dir, models_dir, policies_dir)
+                generate_policy_diff(new_policy, new_policy_time, curr_policy, curr_policy_time, p_i,
+                                     f'{data_base}_{p_i-1}-{p_i}', policies_dir, diffs_dir)
+                relearn_windows.append((w_i, avg_distance))
+                curr_policy, curr_policy_time = new_policy, new_policy_time
+                learned_requests = next_requests
+                cooldown = len(hd_distances)
+                p_i += 1
+        w_i += 1
+        window = all_requests[(w_i-1) * window_size:w_i * window_size]
+
     x, avg_distances = zip(*avg_distances)
     plt.plot(x, avg_distances)
-    x_relearn, y_relearn = zip(*relearn_windows)
-    plt.plot(x_relearn, y_relearn, 'ro', label='relearn')
-    plt.plot([2, 84], [0.23, 2], 'gs', label='new behaviour')
+    if relearn_windows:
+        x_relearn, y_relearn = zip(*relearn_windows)
+        plt.plot(x_relearn, y_relearn, 'ro', label='relearn')
+    # plt.plot([2, 84], [0.23, 2], 'gs', label='new behaviour')
     plt.hlines(relearn_threshold, x[0], x[-1], linestyles='dashed', label='relearn threshold', colors=['black'])
     plt.legend(loc='lower right')
-    plt.title('Average distance of incoming requests to the learning set')
+    plt.title('Average max distance of incoming requests to the learning set')
     plt.xlabel(f'Window ({window_size} requests)')
-    plt.ylabel(f'Average distance (over the last {hd_maxlen} windows)')
-    plt.savefig(f'{plots_dir}/req_dist.png')
+    plt.ylabel(f'Average max distance (approx over the last {len(hd_distances)} windows)')
+    plt.savefig(f'{plots_dir}/{data_base}-req_dist-{str(relearn_threshold).replace(".", "_")}.png')

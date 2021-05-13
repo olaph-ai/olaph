@@ -8,17 +8,20 @@ def _escape_str_bias(s):
 def _example_to_las(atoms):
     return '\n'.join([f'  {k}({", ".join(terms)}).' for k, terms in atoms])
 
-def _normalise_distance(distances, lower, upper, i):
-    dmin = min(distances)
-    dmax = max(distances)
+def _normalise_distance(distances, lower, upper, dmin, dmax, i):
     dnorm = lower + (((distances[i] - dmin) * (upper - lower)) / (dmax - dmin))
     return int(dnorm)
 
 def get_example_penalty(distances, i):
-    if distances is not None:
-        distance = _normalise_distance(distances, 10, 100, i)
-        # distance = int(distances[i] * 100)
-        return f'@{distance}'
+    if distances[i] is not None:
+        distances = list(filter(None, distances))
+        dmin = min(distances)
+        dmax = max(distances)
+        if dmin == dmax:
+            return ''
+        else:
+            distance = _normalise_distance(distances, 10, 100, dmin, dmax, i)
+            return f'@{distance}'
     else:
         return ''
 
@@ -36,7 +39,7 @@ def examples_to_bias(examples):
     return '\n'.join([f"#bias('user(eg(id{i})).').\n{_example_to_bias(i, atoms)}"
                       for i, atoms in enumerate(examples)])
 
-def generate_mode_bias(atoms, variables_in_bias, examples_in_bias):
+def generate_mode_bias(atoms, generalisation, variables_in_bias, examples_in_bias):
     mode_bias = []
     for k, terms in reduce(lambda a, b: a + b, atoms):
         combs = [['const'] * len(terms)]
@@ -54,7 +57,7 @@ def generate_mode_bias(atoms, variables_in_bias, examples_in_bias):
     max_body_literals = max(map(len, atoms))
     if examples_in_bias:
         mode_bias.append(examples_to_bias(atoms))
-    body_lits_cost = lambda n: ((n - max_body_literals)**2 + 10, len(atoms))
+    body_lits_cost = lambda n: ((n - max_body_literals)**2 + generalisation, len(atoms))
     if variables_in_bias:
         mode_bias.append('\n#maxv(1).')
     mode_bias.append(f'''
@@ -62,7 +65,7 @@ def generate_mode_bias(atoms, variables_in_bias, examples_in_bias):
 
 % Prefer rules with the maximum number of body literals in the examples
 % Add 1 to encourage learning fewer rules
-#bias("penalty((N - {max_body_literals})**2 + 10, rule) :- N = #count{{X: in_body(X)}}.").
+#bias("penalty((N - {max_body_literals})**2 + {int(generalisation)}, rule) :- N = #count{{X: in_body(X)}}.").
 
 % Prefer rules that cover fewer examples
 #bias("n(U) :- user(U), not user(U, BodyLit), in_body(BodyLit).").
@@ -71,9 +74,10 @@ def generate_mode_bias(atoms, variables_in_bias, examples_in_bias):
     return '\n'.join(mode_bias), body_lits_cost
 
 
-def generate_learning_task(requests, distances, max_attributes):
+def generate_learning_task(requests, distances, max_attributes, generalisation):
     example_atoms = preprocess_data(requests, max_attributes)
     las_examples = examples_to_las(example_atoms, distances)
-    las_mode_bias, body_cost = generate_mode_bias(example_atoms, variables_in_bias=False, examples_in_bias=True)
+    las_mode_bias, body_cost = generate_mode_bias(example_atoms, generalisation,
+                                                  variables_in_bias=False, examples_in_bias=True)
     task = las_examples + '\n\n' + las_mode_bias
     return task, body_cost

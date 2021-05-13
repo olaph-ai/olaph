@@ -22,8 +22,7 @@ generate:
 	    docker run -v $(shell pwd)/../tasks:/tasks -v $(shell pwd)/../models:/models \
 								 -v $(shell pwd)/../policies:/policies -v $(shell pwd)/../data:/data \
 								 -v $(shell pwd)/../diffs:/diffs -v $(shell pwd)/../plots:/plots \
-								 -e DATA=monitoring-grafana-more.log -e DATA_DIR=/data -e PLOTS_DIR=/plots \
-								 -e TASKS_DIR=/tasks -e MODELS_DIR=/models -e DIFFS_DIR=/diffs \
+							   -e CONFIG=/config/config.yaml \
 	  								drozza/policy-generator:latest python3 /generator/main.py
 
 distance:

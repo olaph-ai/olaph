@@ -18,3 +18,5 @@ WORKDIR /
 RUN rm -rf /tmp/fastlas
 
 COPY ./generator /generator
+RUN mkdir /config
+COPY ./config.yaml /config
