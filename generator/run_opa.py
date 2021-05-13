@@ -7,13 +7,14 @@ log = logging.getLogger(__name__)
 
 def get_opa_denies(window, policy_path, package):
     rs = json.dumps(list(map(lambda r: r['input'], window)))
-    allows = f'''
+    denied_path = 'denied.rego'
+    denied = f'''
 package {package}
-allows := count([r | d := allow with input as input[_]; r := d.allowed; r])
+denied := [i | d := allow with input as input[i]; r := d.allowed; not r]
 '''
-    with open('allows.rego', 'w') as f:
-        f.write(allows)
-    out = run(f'opa eval -f pretty -I -d {policy_path} -d allows.rego "data.{package}.allows"',
+    with open(denied_path, 'w') as f:
+        f.write(denied)
+    out = run(f'opa eval -f pretty -I -d {policy_path} -d {denied_path} "data.{package}.denied"',
               shell=True, check=True, text=True, capture_output=True, input=rs)
-    denies = len(window) - int(out.stdout)
-    return denies
+    denied_rs = [window[int(i)] for i in json.loads(out.stdout)]
+    return len(denied_rs), denied_rs

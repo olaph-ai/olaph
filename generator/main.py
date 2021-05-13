@@ -1,4 +1,5 @@
 import os
+import json
 from functools import reduce
 from copy import deepcopy
 from glob import glob
@@ -75,58 +76,69 @@ if __name__ == '__main__':
     all_requests = get_requests_from_logs(f'{data_dir}/{data}')
     log.info(f'Total requests: {len(all_requests)}')
 
-    learned_requests, learned_distances = all_requests[0:window_size], [1] * window_size
-    curr_policy_path, curr_policy_time, curr_package = generate_policy(
-        deepcopy(learned_requests), learned_distances, max_attributes,
-        generalisation, f'{data_base}_1', tasks_dir, models_dir, policies_dir
-    )
     next_set = []
     avg_distances = []
     relearn_windows = []
     denies = []
+    denieds = []
     cooldown = 0
-    p_i, w_i = 2, 2
+    for w_i in range(1, warm_up + 1):
+        window = all_requests[(w_i-1) * window_size:w_i * window_size]
+        distances = [relearn_threshold] * window_size
+        next_set = list(filter(None,  # Remove empty lists
+                       map(lambda w: [(r, decay * d) if d is not None else (r, None) for (r, d) in w
+                                      if d is None or d > drop_threshold],  # Decay examples
+                           next_set)
+                       ))
+        next_set.append(list(zip(window, distances)))
+    learned_requests, learned_distances = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
+    curr_policy_path, curr_policy_time, curr_package = generate_policy(
+        deepcopy(learned_requests), learned_distances, max_attributes,
+        generalisation, f'{data_base}_1', tasks_dir, models_dir, policies_dir
+    )
+    p_i = 2
+    w_i += 1
     window = all_requests[(w_i-1) * window_size:w_i * window_size]
     while window:
+        distances = compute_distances(deepcopy(window), deepcopy(learned_requests), max_attributes)
         cooldown = max(0, cooldown - 1)
         next_set = list(filter(None,  # Remove empty lists
                                map(lambda w: [(r, decay * d) if d is not None else (r, None) for (r, d) in w
                                               if d is None or d > drop_threshold],  # Decay examples
                                    next_set)
                                ))
-        distances = compute_distances(deepcopy(window), deepcopy(learned_requests), max_attributes)
         next_set.append(list(zip(window, distances)))
-        if w_i > warm_up:
-            num_denies = get_opa_denies(window, curr_policy_path, curr_package)
-            denies.append((w_i, num_denies))
-            hd_distances = list(map(lambda w: max(filter(None, list(zip(*w))[1])), next_set))
-            avg_distance = sum(hd_distances) / len(hd_distances)
-            avg_distances.append((w_i, avg_distance))
-            log.info(f'Window {w_i:3d} - Avg max distance: {avg_distance:.4f}, window_size: {len(window)}, '
-                     f'learned_size: {len(learned_requests)}, next_size: {sum(map(len, next_set))}, '
-                     f'denies: {num_denies}')
-            if avg_distance > relearn_threshold and cooldown == 0:
-                log.info(f'Relearn policy as avg max distance {avg_distance} > {relearn_threshold} and not on CD')
-                next_requests, next_distances = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
-                new_policy_path, new_policy_time, new_package = generate_policy(
-                    deepcopy(next_requests), next_distances, max_attributes,
-                    generalisation, f'{data_base}_{p_i}', tasks_dir, models_dir, policies_dir
-                )
-                generate_policy_diff(new_policy_path, new_policy_time, curr_policy_path, curr_policy_time, p_i,
-                                     f'{data_base}_{p_i-1}-{p_i}', policies_dir, diffs_dir)
-                relearn_windows.append((w_i, avg_distance))
-                curr_policy_path, curr_policy_time, curr_package = new_policy_path, new_policy_time, new_package
-                learned_requests = next_requests
-                cooldown = len(hd_distances)
-                p_i += 1
+        num_denies, denied_rs = get_opa_denies(window, curr_policy_path, curr_package)
+        denieds.extend(denied_rs)
+        denies.append((w_i, num_denies))
+        hd_distances = list(map(lambda w: max(filter(lambda d: d is not None, list(zip(*w))[1])), next_set))
+        avg_distance = sum(hd_distances) / len(hd_distances)
+        avg_distances.append((w_i, avg_distance))
+        log.info(f'Window {w_i:3d} - Avg max distance: {avg_distance:.4f}, window_size: {len(window)}, '
+                 f'learned_size: {len(learned_requests)}, next_size: {sum(map(len, next_set))}, '
+                 f'denies: {num_denies}')
+        if avg_distance > relearn_threshold and cooldown == 0:
+            log.info(f'Relearn policy as avg max distance {avg_distance} > {relearn_threshold} and not on CD')
+            next_requests, next_distances = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
+            new_policy_path, new_policy_time, new_package = generate_policy(
+                deepcopy(next_requests), next_distances, max_attributes,
+                generalisation, f'{data_base}_{p_i}', tasks_dir, models_dir, policies_dir
+            )
+            generate_policy_diff(new_policy_path, new_policy_time, curr_policy_path, curr_policy_time, p_i,
+                                 f'{data_base}_{p_i-1}-{p_i}', policies_dir, diffs_dir)
+            relearn_windows.append((w_i, avg_distance, num_denies))
+            curr_policy_path, curr_policy_time, curr_package = new_policy_path, new_policy_time, new_package
+            learned_requests = next_requests
+            cooldown = len(hd_distances)
+            p_i += 1
         w_i += 1
         window = all_requests[(w_i-1) * window_size:w_i * window_size]
 
     x, avg_distances = zip(*avg_distances)
     plt.plot(x, avg_distances)
     if relearn_windows:
-        x_relearn, y_relearn = zip(*relearn_windows)
-        plt.plot(x_relearn, y_relearn, 'ro', label='relearn')
+        x_relearn, y1_relearn, y2_relearn = zip(*relearn_windows)
+        plt.plot(x_relearn, y1_relearn, 'ro', label='relearn')
     # plt.plot([2, 84], [0.23, 2], 'gs', label='new behaviour')
     plt.hlines(relearn_threshold, x[0], x[-1], linestyles='dashed', label='relearn threshold', colors=['black'])
     plt.legend(loc='lower right')
@@ -137,4 +149,12 @@ if __name__ == '__main__':
     plt.clf()
     x, w_denies = zip(*denies)
     plt.plot(x, w_denies)
+    if relearn_windows:
+        plt.plot(x_relearn, y2_relearn, 'ro', label='relearn')
+    plt.title('Policy denies per window')
+    plt.legend()
+    plt.xlabel(f'Window ({window_size} requests)')
+    plt.ylabel(f'Number of denies')
     plt.savefig(f'{plots_dir}/{data_base}-denies-{str(relearn_threshold).replace(".", "_")}.png')
+    with open(f'{plots_dir}/{data_base}-denieds-{str(relearn_threshold).replace(".", "_")}.json', 'w') as f:
+        f.write(json.dumps(denieds, indent=4))
