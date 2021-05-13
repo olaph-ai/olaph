@@ -1,6 +1,9 @@
 from functools import reduce
-
 from preprocess import preprocess_data
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(name)s: %(levelname)s - %(message)s')
+log = logging.getLogger(__name__)
 
 def _escape_str_bias(s):
     return s.replace("'", "\\'")
@@ -14,9 +17,9 @@ def _normalise_distance(distances, lower, upper, dmin, dmax, i):
 
 def get_example_penalty(distances, i):
     if distances[i] is not None:
-        distances = list(filter(None, distances))
-        dmin = min(distances)
-        dmax = max(distances)
+        distances_filtered = list(filter(lambda d: d is not None, distances))
+        dmin = min(distances_filtered)
+        dmax = max(distances_filtered)
         if dmin == dmax:
             return ''
         else:

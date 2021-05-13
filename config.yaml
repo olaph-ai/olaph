@@ -1,5 +1,5 @@
 paths:
-  data: synth-heart3.log
+  data: synth-heart11.log
   data_dir: /data
   tasks_dir: /tasks
   models_dir: /models
@@ -7,10 +7,26 @@ paths:
   diffs_dir: /diffs
   plots_dir: /plots
 settings:
+  # max_attributes: 20
+  # window_size: 100
+  # relearn_threshold: 1.5
+  # generalisation: 1
+  # decay: 0.5
+  # drop_threshold: 0.05
+  # warm_up: 20
+
+  # max_attributes: 20
+  # window_size: 100
+  # relearn_threshold: 1.5
+  # generalisation: 1
+  # decay: 0.5
+  # drop_threshold: 0.05
+  # warm_up: 20
+
   max_attributes: 20
-  window_size: 100
-  relearn_threshold: 2
+  window_size: 50
+  relearn_threshold: 1.5
   generalisation: 1
-  decay: 0.5
+  decay: 0.7
   drop_threshold: 0.1
-  warm_up: 20
+  warm_up: 30

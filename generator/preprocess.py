@@ -1,6 +1,10 @@
 import json
 import pandas as pd
 from sklearn.preprocessing import OrdinalEncoder
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(name)s: %(levelname)s - %(message)s')
+log = logging.getLogger(__name__)
 
 def flatten(request):
     example = {}

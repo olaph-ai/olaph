@@ -57,6 +57,7 @@ if __name__ == '__main__':
     diffs_dir = config['paths']['diffs_dir']
     plots_dir = config['paths']['plots_dir']
 
+    log.info(config['settings'])
     max_attributes = int(config['settings']['max_attributes'])
     window_size = int(config['settings']['window_size'])
     relearn_threshold = float(config['settings']['relearn_threshold'])
@@ -64,12 +65,6 @@ if __name__ == '__main__':
     decay = float(config['settings']['decay'])
     drop_threshold = float(config['settings']['drop_threshold'])
     warm_up = int(config['settings']['warm_up'])
-    # max_attributes = int(input(f'Max attributes [{max_attributes}]: ') or max_attributes)
-    # window_size = int(input(f'Window size [{window_size}]: ') or window_size)
-    # relearn_threshold = float(input(f'Relearn threshold [{relearn_threshold}]: ') or relearn_threshold)
-    # generalisation = int(input(f'Generalisation [{generalisation}]: ') or generalisation)
-    # decay = float(input(f'Example decay [{decay}]: ') or decay)
-    # drop_threshold = float(input(f'Example drop threshold [{drop_threshold}]: ') or drop_threshold)
     differ = dl.HtmlDiff(wrapcolumn=80)
 
     all_requests = get_requests_from_logs(f'{data_dir}/{data}')
@@ -98,11 +93,10 @@ if __name__ == '__main__':
             hd_distances = list(map(lambda w: max(filter(None, list(zip(*w))[1])), next_set))
             avg_distance = sum(hd_distances) / len(hd_distances)
             avg_distances.append((w_i, avg_distance))
-            log.info(f'Window {w_i} - Avg distance: {avg_distance}, w_size: {len(window)}, '
-                     f'l_size: {len(learned_requests)}, n_size: {sum(map(len, next_set))}')
+            log.info(f'Window {w_i} - Avg max distance: {avg_distance}, window_size: {len(window)}, '
+                     f'learned_size: {len(learned_requests)}, next_size: {sum(map(len, next_set))}')
             if avg_distance > relearn_threshold and cooldown == 0:
-                log.info(f'Relearning policy as avg distance {avg_distance} > {relearn_threshold} and not on '
-                         'cooldown/warmup')
+                log.info(f'Relearn policy as avg max distance {avg_distance} > {relearn_threshold} and not on CD')
                 next_requests, next_distances = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
                 new_policy, new_policy_time = generate_policy(deepcopy(next_requests), next_distances,
                                                               max_attributes, generalisation, f'{data_base}_{p_i}',
