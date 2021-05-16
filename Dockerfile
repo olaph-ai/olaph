@@ -21,4 +21,7 @@ RUN curl -L -o opa https://openpolicyagent.org/downloads/v0.28.0/opa_linux_amd64
 RUN chmod 755 ./opa
 RUN mv ./opa /usr/local/bin
 
+RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+RUN install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
 COPY ./generator /generator

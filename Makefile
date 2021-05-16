@@ -1,4 +1,4 @@
-all: build generate
+all: build monitor
 
 build:
 			docker build -q -t drozza/policy-generator:latest .
@@ -38,3 +38,11 @@ bash:
 # 			opa eval -f pretty -i ../data/single/synheart-controller-opa-istio1.log.json -d ../policies/synheart-controller-opa-istio0.rego "data.synheart_controller_opa_istio.allow"
 eval:
 			opa eval -i ../data/single/synth-heart11-single.json -d ../policies/synth-heart11_1.rego "data.synth_heart11.allow"
+
+monitor:
+	    docker run -v $(shell pwd)/../tasks:/tasks -v $(shell pwd)/../models:/models \
+								 -v $(shell pwd)/../policies:/policies -v $(shell pwd)/../data:/data \
+								 -v $(shell pwd)/../diffs:/diffs -v $(shell pwd)/../plots:/plots \
+                 -v $(shell pwd)/config:/config -e CONFIG=/config/config.yaml \
+								 -v $${HOME}/.kube:/root/.kube \
+	  								drozza/policy-generator:latest python3 /generator/active_monitoring.py

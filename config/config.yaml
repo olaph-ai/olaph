@@ -31,4 +31,5 @@ settings:
   generalisation: 1
   decay: 0.7
   drop_threshold: 0.1
-  warm_up: 30
+  warm_up: 10
+  # warm_up: 30
