@@ -1,4 +1,4 @@
-all: build monitor
+all: build generate
 
 build:
 			docker build -q -t drozza/policy-generator:latest .

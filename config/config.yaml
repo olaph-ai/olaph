@@ -1,5 +1,5 @@
 paths:
-  data: synth-heart11.log
+  data: synth-heart13.log
   # allow_list: synth-heart11-allow.log
   # block_list: synth-heart11-block.log
   data_dir: /data
@@ -10,26 +10,17 @@ paths:
   plots_dir: /plots
 settings:
   # max_attributes: 20
-  # window_size: 100
-  # relearn_threshold: 1.5
+  # window_size: 50
   # generalisation: 1
-  # decay: 0.5
-  # drop_threshold: 0.05
-  # warm_up: 20
-
-  # max_attributes: 20
-  # window_size: 100
-  # relearn_threshold: 1.5
-  # generalisation: 1
-  # decay: 0.5
-  # drop_threshold: 0.05
-  # warm_up: 20
+  # decay: 0.7
+  # drop_threshold: 0.1
+  # warm_up: 30
+  # time_penalty: 0.1
 
   max_attributes: 20
   window_size: 50
-  relearn_threshold: 1.5
   generalisation: 1
-  decay: 0.7
+  decay: 0.85
   drop_threshold: 0.1
-  warm_up: 10
-  # warm_up: 30
+  warm_up: 30
+  time_penalty: 0.001

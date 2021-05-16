@@ -57,10 +57,10 @@ def generate_mode_bias(atoms, generalisation, variables_in_bias, examples_in_bia
             mb = f'#constant({k}, {term}).'
             if mb not in mode_bias:
                 mode_bias.append(mb)
-    max_body_literals = max(map(len, atoms))
+    avg_min_max_body_literals = (max(map(len, atoms)) + min(map(len, atoms))) // 2
     if examples_in_bias:
         mode_bias.append(examples_to_bias(atoms))
-    body_lits_cost = lambda n: ((n - max_body_literals)**2 + generalisation, len(atoms))
+    body_lits_cost = lambda n: ((n - avg_min_max_body_literals)**2 + generalisation, len(atoms))
     if variables_in_bias:
         mode_bias.append('\n#maxv(1).')
     mode_bias.append(f'''
@@ -68,7 +68,7 @@ def generate_mode_bias(atoms, generalisation, variables_in_bias, examples_in_bia
 
 % Prefer rules with the maximum number of body literals in the examples
 % Add 1 to encourage learning fewer rules
-#bias("penalty((N - {max_body_literals})**2 + {int(generalisation)}, rule) :- N = #count{{X: in_body(X)}}.").
+#bias("penalty((N - {avg_min_max_body_literals})**2 + {int(generalisation)}, rule) :- N = #count{{X: in_body(X)}}.").
 
 % Prefer rules that cover fewer examples
 #bias("n(U) :- user(U), not user(U, BodyLit), in_body(BodyLit).").
