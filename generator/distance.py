@@ -20,7 +20,7 @@ def _preprocess(requests, prev_requests, max_attributes):
 
 def compute_distances(requests, prev_requests, max_attributes):
     requests, prev_requests = _preprocess(requests, prev_requests, max_attributes)
-    return distance.cdist(requests, prev_requests, 'euclidean').min(axis=1)
+    return distance.cdist(requests, prev_requests, 'cityblock').min(axis=1)
 
 def compute_hd_distance(requests, prev_requests, max_attributes):
     requests, prev_requests = _preprocess(requests, prev_requests, max_attributes)

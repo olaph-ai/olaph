@@ -80,7 +80,7 @@ def _select_features(ds, max_attributes):
     data = pd.DataFrame(ds)
     encoded = pd.DataFrame(OrdinalEncoder().fit_transform(data.astype(str)), columns=data.columns)
     heavy_tailedness = encoded.kurtosis().sort_values(ascending=False)
-    chosen_attributes = heavy_tailedness[:max_attributes].index.sort_values().to_list()
+    chosen_attributes = sorted(heavy_tailedness.index.sort_values().to_list())[:max_attributes]
     return list(map(lambda d: {k: v for k, v in d.items() if k in chosen_attributes}, ds)), len(chosen_attributes)
 
 def select_features(data, max_attributes):
