@@ -52,7 +52,8 @@ if __name__ == '__main__':
     differ = dl.HtmlDiff(wrapcolumn=80)
 
     all_requests = get_requests_from_logs(f'{data_dir}/{data}')
-    # all_requests = all_requests[(len(all_requests) // 2) + 5000:]
+    # log.info('\n'.join([json.dumps(r, indent=4) for r in all_requests[:3]]))
+    all_requests = all_requests[(len(all_requests) // 2) + 5000:]
     log.info(f'Total requests: {len(all_requests)}')
 
     next_set = []
@@ -64,7 +65,9 @@ if __name__ == '__main__':
     thresholds = []
     for w_i in range(1, warm_up + 1):
         window = all_requests[(w_i-1) * window_size:w_i * window_size]
-        distances = [1] * window_size
+        if not window:
+            break
+        distances = [1] * len(window)
         next_set = decay_examples(next_set, drop_threshold)
         next_set.append(list(zip(window, distances)))
     learned_requests, learned_distances = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
@@ -76,6 +79,7 @@ if __name__ == '__main__':
     w_i += 1
     window = all_requests[(w_i-1) * window_size:w_i * window_size]
     cooldown = 0
+    last_relearn = 0
     relearn_high, relearn_low = False, False
     while window:
         cooldown = max(0, cooldown - 1)
@@ -88,7 +92,7 @@ if __name__ == '__main__':
         hd_distances = list(map(lambda w: max(filter(lambda d: d is not None, list(zip(*w))[1])), next_set))
         avg_distance = np.mean(hd_distances)
         avg_distances.append((w_i, avg_distance))
-        curr_avg_distances = list(zip(*avg_distances[-len(hd_distances):]))[1]
+        curr_avg_distances = list(zip(*avg_distances[last_relearn:]))[1]
         mean_avg_d = np.mean(curr_avg_distances)
         std_avg_d = np.std(curr_avg_distances)
         high_thresh = mean_avg_d + 2 * std_avg_d
@@ -121,6 +125,7 @@ if __name__ == '__main__':
             learned_requests = next_requests
             cooldown = len(hd_distances)
             relearn_high, relearn_low = False, False
+            last_relearn = len(avg_distances)
             p_i += 1
             c_i = 0
         w_i += 1

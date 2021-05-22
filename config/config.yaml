@@ -1,5 +1,6 @@
 paths:
   data: synth-heart13.log
+  # data: monitoring-grafana-quiz.log
   # allow_list: synth-heart11-allow.log
   # block_list: synth-heart11-block.log
   data_dir: /data
@@ -27,7 +28,7 @@ settings:
 
   max_attributes: 25
   window_size: 50
-  generalisation: 10
+  generalisation: 30
   decay: 0.75
   drop_threshold: 0.1
   warm_up: 30
