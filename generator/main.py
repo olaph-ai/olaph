@@ -22,12 +22,12 @@ def clear_dir(path, name):
     for f in glob(f'{path}/{name}*'):
         os.remove(f)
 
-def decay_examples(next_set, drop_threshold):
-    return list(filter(None,  # Remove empty lists
+def decay_examples(next_set, drop_threshold, maxlen):
+    return deque(filter(None,  # Remove empty lists
                        map(lambda w: [(r, decay * d) if d is not None else (r, None) for (r, d) in w
                                       if d is None or d > drop_threshold],  # Decay examples
                            next_set)
-                       ))
+                        ), maxlen=maxlen)
 
 if __name__ == '__main__':
     with open(os.getenv('CONFIG'), 'r') as f:
@@ -43,32 +43,32 @@ if __name__ == '__main__':
     log.info(config['settings'])
 
     max_attributes = int(config['settings']['max_attributes'])
+    max_requests = int(config['settings']['max_requests'])
     window_size = int(config['settings']['window_size'])
     generalisation = int(config['settings']['generalisation'])
     decay = float(config['settings']['decay'])
-    drop_threshold = float(config['settings']['drop_threshold'])
-    warm_up = int(config['settings']['warm_up'])
     calibrate_interval = max(int(config['settings']['calibrate_interval']), 1)
     differ = dl.HtmlDiff(wrapcolumn=80)
 
     all_requests = get_requests_from_logs(f'{data_dir}/{data}')
     # log.info('\n'.join([json.dumps(r, indent=4) for r in all_requests[:3]]))
     all_requests = all_requests[(len(all_requests) // 2) + 5000:]
+    # all_requests = all_requests[(len(all_requests) // 2) - 5000:]
     log.info(f'Total requests: {len(all_requests)}')
 
-    next_set = []
+    maxlen = max_requests // window_size
+    next_set = deque(maxlen=maxlen)
     avg_distances = []
     relearn_windows = []
     relearn_schedule_ws = []
     denies = []
     denieds = []
     thresholds = []
-    for w_i in range(1, warm_up + 1):
+    for w_i in range(1, maxlen + 1):
         window = all_requests[(w_i-1) * window_size:w_i * window_size]
         if not window:
             break
-        distances = [1] * len(window)
-        next_set = decay_examples(next_set, drop_threshold)
+        distances = [0] * len(window)
         next_set.append(list(zip(window, distances)))
     learned_requests, learned_distances = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
     curr_policy_path, curr_policy_time, curr_package = generate_policy(
@@ -81,10 +81,11 @@ if __name__ == '__main__':
     cooldown = 0
     last_relearn = 0
     relearn_high, relearn_low = False, False
+    low_thresh = 0
     while window:
         cooldown = max(0, cooldown - 1)
         distances = compute_distances(deepcopy(window), deepcopy(learned_requests), max_attributes)
-        next_set = decay_examples(next_set, drop_threshold)
+        next_set = decay_examples(next_set, low_thresh, maxlen)
         next_set.append(list(zip(window, distances)))
         num_denies, denied_rs = get_opa_denies(window, curr_policy_path, curr_package)
         denieds.extend(denied_rs)

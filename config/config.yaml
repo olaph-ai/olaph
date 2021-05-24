@@ -26,10 +26,20 @@ settings:
   # warm_up: 30
   # time_penalty: 0.006
 
+  # max_attributes: 25
+  # window_size: 50
+  # generalisation: 30
+  # # decay: 0.75
+  # # drop_threshold: 0.1
+  # decay: 0.9
+  # drop_threshold: 0.1
+  # warm_up: 30
+  # # calibrate_interval: 200
+  # calibrate_interval: 200
+
   max_attributes: 25
+  max_requests: 1000
   window_size: 50
-  generalisation: 30
-  decay: 0.75
-  drop_threshold: 0.1
-  warm_up: 30
+  generalisation: 1
+  decay: 0.9
   calibrate_interval: 200
