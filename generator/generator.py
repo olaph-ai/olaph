@@ -4,13 +4,14 @@ from run_learning_task import run_task
 from generate_rego_policy import generate_rego_policy
 
 def generate_policy(requests, distances, max_attributes, generalisation, name,
-                    tasks_dir, models_dir, policies_dir, data_base):
-    task, body_cost = generate_learning_task(requests, distances, max_attributes, generalisation)
+                    tasks_dir, models_dir, policies_dir, data_base, restructure):
+    task, body_cost = generate_learning_task(requests, distances, max_attributes, generalisation, restructure)
     task_path = f'{tasks_dir}/{name}.las'
     with open(task_path, 'w') as f:
         f.write(task)
-    model, rule_confidences = run_task(task_path, body_cost)
-    with open(f'{models_dir}/{name}.lp', 'w') as f:
+    model_path = f'{models_dir}/{name}.lp'
+    model, rule_confidences = run_task(task_path, model_path, body_cost)
+    with open(model_path, 'w') as f:
         f.write(model)
     new_policy, package = generate_rego_policy(rule_confidences, data_base)
     new_policy_path = f'{policies_dir}/{name}.rego'

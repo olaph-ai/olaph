@@ -1,5 +1,12 @@
 paths:
   data: synth-heart13.log
+  # data: lacework/agent/2021-05-27/2021-05-27-00-00/dns_query.json.gz
+  # data: lacework/agent/2021-05-27/2021-05-27-00-00/process_summary.json.gz
+  # data: lacework/agent/2021-05-27/2021-05-27-00-00/connections.json.gz
+  # data: lacework/agent/2021-05-27/2021-05-27-00-00/container_summary.json.gz
+  # data: lacework/agent/2021-05-27/2021-05-27-00-00/machine_details.json.gz
+  # data: lacework/agent/2021-05-27/2021-05-27-00-00/all_files.json.gz
+  # data: lacework/processed/change_files.json
   # data: monitoring-grafana-quiz.log
   # allow_list: synth-heart11-allow.log
   # block_list: synth-heart11-block.log
@@ -38,8 +45,8 @@ settings:
   # calibrate_interval: 200
 
   max_attributes: 25
-  max_requests: 1000
-  window_size: 50
+  max_requests: 1500
+  base_window_size: 10
   generalisation: 1
   decay: 0.9
-  calibrate_interval: 200
+  calibrate_interval: 50000

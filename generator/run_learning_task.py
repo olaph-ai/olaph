@@ -1,11 +1,13 @@
 from subprocess import run
 from re import split
 
-def run_task(task, body_cost):
+def run_task(task, model_path, body_cost):
     not_in_quotes = '(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)'
     out = run(['FastLAS', '--d', task], capture_output=True)
     out.check_returncode()
     debug = out.stdout.decode().strip()
+    with open(f'{model_path}.debug', 'w') as f:
+        f.write(debug)
     prev, rest = split(fr'Solving\.\.\.{not_in_quotes}', debug)
     model = split(fr'{{{not_in_quotes}', rest)[0].strip()
     if model == 'UNSATISFIABLE':

@@ -77,8 +77,8 @@ def generate_mode_bias(atoms, generalisation, variables_in_bias, examples_in_bia
     return '\n'.join(mode_bias), body_lits_cost
 
 
-def generate_learning_task(requests, distances, max_attributes, generalisation):
-    example_atoms = preprocess_data(requests, max_attributes)
+def generate_learning_task(requests, distances, max_attributes, generalisation, restructure):
+    example_atoms = preprocess_data(requests, max_attributes, restructure)
     las_examples = examples_to_las(example_atoms, distances)
     las_mode_bias, body_cost = generate_mode_bias(example_atoms, generalisation,
                                                   variables_in_bias=False, examples_in_bias=True)
