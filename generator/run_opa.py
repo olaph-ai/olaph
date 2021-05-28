@@ -5,7 +5,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(name)s: %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
-def get_opa_denies(window, policy_path, package):
+def get_opa_denies(window, policy_path, package, restructure):
     rs = json.dumps(list(map(lambda r: r['input'], window)))
     denied_path = 'denied.rego'
     denied = f'''

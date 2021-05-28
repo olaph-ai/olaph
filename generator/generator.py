@@ -13,7 +13,7 @@ def generate_policy(requests, distances, max_attributes, generalisation, name,
     model, rule_confidences = run_task(task_path, model_path, body_cost)
     with open(model_path, 'w') as f:
         f.write(model)
-    new_policy, package = generate_rego_policy(rule_confidences, data_base)
+    new_policy, package = generate_rego_policy(rule_confidences, data_base, restructure)
     new_policy_path = f'{policies_dir}/{name}.rego'
     with open(new_policy_path, 'w') as f:
         f.write(new_policy)

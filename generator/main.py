@@ -1,4 +1,5 @@
 import os
+from math import ceil
 import json
 from functools import reduce
 from copy import deepcopy
@@ -41,7 +42,7 @@ if __name__ == '__main__':
     diffs_dir = config['paths']['diffs_dir']
     plots_dir = config['paths']['plots_dir']
     log.info(config['settings'])
-    restructure = True
+    restructure = False
     distance_measure = 'cityblock'
     # distance_measure = 'jaccard'
 
@@ -81,7 +82,7 @@ if __name__ == '__main__':
         deepcopy(learned_requests), learned_distances, max_attributes,
         generalisation, f'{data_base}_1', tasks_dir, models_dir, policies_dir, data_base, restructure
     )
-    p_i, r_i, u_i = 2, window_size, 0
+    p_i, r_i = 2, window_size
     w_i = 2
     window = all_requests[i:j]
     i = j
@@ -97,12 +98,9 @@ if __name__ == '__main__':
         distances = compute_distances(deepcopy(window), deepcopy(learned_requests), distance_measure, max_attributes, restructure)
         next_set = decay_examples(next_set, low_thresh, maxlen)
         next_set.append(list(zip(window, distances)))
-        if restructure:
-            num_denies, denied_rs = get_opa_denies(window, curr_policy_path, curr_package)
-            denieds.extend(denied_rs)
-            denies.append((w_i, num_denies))
-        else:
-            num_denies = 0
+        num_denies, denied_rs = get_opa_denies(window, curr_policy_path, curr_package, restructure)
+        denieds.extend(denied_rs)
+        denies.append((w_i, num_denies))
         hd_distances = list(map(lambda w: max(filter(lambda d: d is not None, list(zip(*w))[1])), next_set))
         avg_distance = np.mean(hd_distances)
         avg_distances.append((w_i, avg_distance))
@@ -119,12 +117,12 @@ if __name__ == '__main__':
             log.info(f'Schedule relearn of policy, as {avg_distance:.4f} > {high_thresh:.4f}')
             relearn_high = True
             relearn_schedule_ws.append((w_i, avg_distance))
-            u_i = 0
+            window_size = base_window_size
         elif avg_distance < low_thresh and not relearn_low and not relearn_high and cooldown == 0:
             log.info(f'Schedule relearn of policy, as {avg_distance:.4f} < {low_thresh:.4f}')
             relearn_low = True
             relearn_schedule_ws.append((w_i, avg_distance))
-            u_i = 0
+            window_size = base_window_size
         elif (relearn_high and avg_distance <= np.mean(curr_avg_distances)
               or relearn_low and avg_distance >= np.mean(curr_avg_distances)) or r_i % calibrate_interval == 0:
             log.info(f'Relearn {"high" if relearn_high else "low" if relearn_low else "calibrate"}')
@@ -142,14 +140,9 @@ if __name__ == '__main__':
             relearn_high, relearn_low = False, False
             last_relearn = len(avg_distances)
             p_i += 1
-            window_size = min(window_size * u_i, max_requests // 2)
             r_i = 0
-            u_i = 0
         w_i += 1
-        wb = window_size - base_window_size
-        cr = calibrate_interval  - r_i
-        window_size = max(window_size - (cr + wb)//cr, base_window_size)
-        u_i += 1
+        window_size = min(window_size + 1, max_requests // 2)
         window = all_requests[i:j]
         i = j
         j += window_size
@@ -171,16 +164,15 @@ if __name__ == '__main__':
     plt.xlabel(f'Window ({window_size} requests)')
     plt.ylabel(f'Average max distance (approx over the last {len(hd_distances)} windows)')
     plt.savefig(f'{plots_dir}/{name}-req_dist.png')
-    if restructure:
-        plt.clf()
-        x, w_denies = zip(*denies)
-        plt.plot(x, w_denies)
-        if relearn_windows:
-            plt.plot(x_relearn, y2_relearn, 'ro', label='relearn')
-        plt.title('Policy denies per window')
-        plt.legend()
-        plt.xlabel(f'Window ({window_size} requests)')
-        plt.ylabel(f'Number of denies')
-        plt.savefig(f'{plots_dir}/{name}-denies.png')
-        with open(f'{plots_dir}/{name}-denieds.json', 'w') as f:
-            f.write(json.dumps(denieds, indent=4))
+    plt.clf()
+    x, w_denies = zip(*denies)
+    plt.plot(x, w_denies)
+    if relearn_windows:
+        plt.plot(x_relearn, y2_relearn, 'ro', label='relearn')
+    plt.title('Policy denies per window')
+    plt.legend()
+    plt.xlabel(f'Window ({window_size} requests)')
+    plt.ylabel(f'Number of denies')
+    plt.savefig(f'{plots_dir}/{name}-denies.png')
+    with open(f'{plots_dir}/{name}-denieds.json', 'w') as f:
+        f.write(json.dumps(denieds, indent=4))

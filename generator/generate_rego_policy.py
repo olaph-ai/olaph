@@ -1,17 +1,16 @@
 from re import split, sub
 
-def generate_rego_policy(model, data_base):
+def generate_rego_policy(model, data_base, restructure):
     not_in_quotes = '(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)'
     package = data_base.replace('-', '_')
-    preamble = f"""package {package}
-
+    preamble = f"""package {package}""" + ("""
 import input.attributes.source.address.socketAddress as source
 import input.attributes.destination.address.socketAddress as destination
 import input.attributes.request.http as request
 import input.attributes.request.http.headers
 import input.parsed_body
 import input.parsed_path
-import input.parsed_query
+import input.parsed_query""" if restructure else '') + f"""
 
 default allow = {{
     "allowed": false,
@@ -47,7 +46,7 @@ default allow = {{
                     rego_atom.append(f'[{term}]')
                 else:
                     term = term[1:][:-1]
-                    if name in ['headers', 'parsed_query', 'parsed_body']:
+                    if name in ['headers', 'parsed_query', 'parsed_body'] or term.isnumeric():
                         rego_atom.append(f'["{term}"]')
                     else:
                         rego_atom.append(f'.{term}')

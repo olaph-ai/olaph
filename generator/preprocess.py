@@ -51,7 +51,7 @@ def get_requests_from_logs(path, restructure):
                         list(filter(lambda l: l['msg'] == 'Decision Log', logs))
                         ))
     else:
-        return logs
+        return list(map(lambda d: {'input': {k.lower(): v for k, v in d.items()}}, logs))
 
 def _get_logs(path, restructure):
     logs = []
@@ -80,7 +80,8 @@ def example_to_atoms(example):
     for k, v in request.items():
         atoms.append(('__'.join(k), (_val_to_las(v),)))
     for k, v in user_input.items():
-        atoms.append((k[0], tuple(map(_val_to_las, k[1:])) + (_user_val_to_las(v),)))
+        if type(v) is not int:  # FastLAS bug overflow
+            atoms.append((k[0], tuple(map(_val_to_las, k[1:] + (v,)))))
     return atoms
 
 def _select_features(ds, max_attributes):
