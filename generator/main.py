@@ -25,8 +25,8 @@ def clear_dir(path, name):
 
 def decay_examples(next_set, drop_threshold, maxlen):
     return deque(filter(None,  # Remove empty lists
-                       map(lambda w: [(r, decay * d) if d is not None else (r, None) for (r, d) in w
-                                      if d is None or d > drop_threshold],  # Decay examples
+                       map(lambda w: [(r, decay * d, p) if not p else (r, d, p) for (r, d, p) in w
+                                      if p or d > drop_threshold],  # Decay examples
                            next_set)
                         ), maxlen=maxlen)
 
@@ -34,7 +34,6 @@ if __name__ == '__main__':
     with open(os.getenv('CONFIG'), 'r') as f:
         config = yaml.safe_load(f)
     data = config['paths']['data']
-    data_base = os.path.split(data)[1].split('.', 1)[0]
     data_dir = config['paths']['data_dir']
     tasks_dir = config['paths']['tasks_dir']
     models_dir = config['paths']['models_dir']
@@ -54,11 +53,26 @@ if __name__ == '__main__':
     calibrate_interval = max(int(config['settings']['calibrate_interval']), 1)
     differ = dl.HtmlDiff(wrapcolumn=80)
 
-    all_requests = get_requests_from_logs(f'{data_dir}/{data}', restructure)
-    # all_requests = all_requests[:100000]
-    # log.info('\n'.join([json.dumps(r, indent=4) for r in all_requests[:3]]))
-    # all_requests = all_requests[(len(all_requests) // 2) + 5000:]
-    # all_requests = all_requests[(len(all_requests) // 2) - 5000:]
+    data_path = f'{data_dir}/{data}'
+    if os.path.isdir(data_path):
+        all_requests = []
+        i = 0
+        data_type = config['paths']['data_type']
+        data_base = os.path.split(data_type)[1].split('.', 1)[0]
+        for p in sorted(glob(f'{data_path}/**', recursive=True)):
+            if os.path.isfile(p) and os.path.basename(p) == data_type:
+                if 13 <= i <= 15:
+                    log.info(f'Loading requests from: {p}')
+                    requests = get_requests_from_logs(p, restructure)
+                    all_requests.extend(requests)
+                i += 1
+    else:
+        data_base = os.path.split(data)[1].split('.', 1)[0]
+        all_requests = get_requests_from_logs(data_path, restructure)
+        # all_requests = all_requests[:100000]
+        # log.info('\n'.join([json.dumps(r, indent=4) for r in all_requests[:3]]))
+        # all_requests = all_requests[(len(all_requests) // 2) + 5000:]
+        # all_requests = all_requests[(len(all_requests) // 2) - 5000:]
     log.info(f'Total requests: {len(all_requests)}')
 
     window_size = base_window_size
@@ -76,13 +90,14 @@ if __name__ == '__main__':
     i = j
     j += window_size
     distances = [0] * len(window)
-    next_set.append(list(zip(window, distances)))
-    learned_requests, learned_distances = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
+    permanents = [False] * len(window)
+    next_set.append(list(zip(window, distances, permanents)))
+    learned_requests, learned_distances, _ = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
     curr_policy_path, curr_policy_time, curr_package = generate_policy(
         deepcopy(learned_requests), learned_distances, max_attributes,
         generalisation, f'{data_base}_1', tasks_dir, models_dir, policies_dir, data_base, restructure
     )
-    p_i, r_i = 2, window_size
+    p_i, r_i = 2, len(window)
     w_i = 2
     window = all_requests[i:j]
     i = j
@@ -95,13 +110,15 @@ if __name__ == '__main__':
         cooldown = max(0, cooldown - 1)
         r_i += len(window)
         maxlen = max_requests // window_size
-        distances = compute_distances(deepcopy(window), deepcopy(learned_requests), distance_measure, max_attributes, restructure)
+        distances = compute_distances(deepcopy(window), deepcopy(learned_requests),
+                                      distance_measure, max_attributes, restructure)
         next_set = decay_examples(next_set, low_thresh, maxlen)
-        next_set.append(list(zip(window, distances)))
+        next_window = list(zip(window, distances, [False] * len(window)))
+        next_set.append(next_window)
         num_denies, denied_rs = get_opa_denies(window, curr_policy_path, curr_package, restructure)
         denieds.extend(denied_rs)
         denies.append((w_i, num_denies))
-        hd_distances = list(map(lambda w: max(filter(lambda d: d is not None, list(zip(*w))[1])), next_set))
+        hd_distances = list(map(lambda w: max(list(zip(*w))[1]), next_set))
         avg_distance = np.mean(hd_distances)
         avg_distances.append((w_i, avg_distance))
         curr_avg_distances = list(zip(*avg_distances[last_relearn:]))[1]
@@ -110,23 +127,23 @@ if __name__ == '__main__':
         high_thresh = mean_avg_d + 2 * std_avg_d
         low_thresh = max(mean_avg_d - 2 * std_avg_d, 0)
         thresholds.append((w_i, high_thresh, low_thresh))
-        log.info(f'Window {w_i:3d} - w_size: {window_size}, Avg max distance: {avg_distance:.4f}, '
+        calibrate = r_i % calibrate_interval == 0
+        log.info(f'Window {w_i:3d} ({int((r_i/len(all_requests)) * 100):2d}%) - w_size: {window_size}, '
+                 f'Avg max distance: {avg_distance:.4f}, '
                  f'learned_size: {len(learned_requests)}, next_size: {sum(map(len, next_set)):4d} ({len(next_set)})'
                  f', high threshold: {high_thresh:.4f}, low threshold: {low_thresh:.4f}, denies: {num_denies}')
         if avg_distance > high_thresh and not relearn_high and not relearn_low:
             log.info(f'Schedule relearn of policy, as {avg_distance:.4f} > {high_thresh:.4f}')
             relearn_high = True
             relearn_schedule_ws.append((w_i, avg_distance))
-            window_size = base_window_size
         elif avg_distance < low_thresh and not relearn_low and not relearn_high and cooldown == 0:
             log.info(f'Schedule relearn of policy, as {avg_distance:.4f} < {low_thresh:.4f}')
             relearn_low = True
             relearn_schedule_ws.append((w_i, avg_distance))
-            window_size = base_window_size
         elif (relearn_high and avg_distance <= np.mean(curr_avg_distances)
-              or relearn_low and avg_distance >= np.mean(curr_avg_distances)) or r_i % calibrate_interval == 0:
+              or relearn_low and avg_distance >= np.mean(curr_avg_distances)) or calibrate:
             log.info(f'Relearn {"high" if relearn_high else "low" if relearn_low else "calibrate"}')
-            next_requests, next_distances = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
+            next_requests, next_distances, _ = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
             new_policy_path, new_policy_time, new_package = generate_policy(
                 deepcopy(next_requests), next_distances, max_attributes,
                 generalisation, f'{data_base}_{p_i}', tasks_dir, models_dir, policies_dir, data_base, restructure
@@ -139,10 +156,12 @@ if __name__ == '__main__':
             cooldown = len(hd_distances)
             relearn_high, relearn_low = False, False
             last_relearn = len(avg_distances)
+            # next_set.append([(r, d, True) for (r, d, _) in map(lambda w: max(w, key=lambda rr: rr[1]), next_set)])
+            next_set.append([(r, d, True) for (r, d, _) in map(lambda w: max(w, key=lambda rr: rr[1]) if relearn_high else min(w, key=lambda rr: rr[1]), next_set)])
+            # next_set.append([(r, d, True) for (r, d, _) in anomaly_window])
+            # next_set = [[(r, d, not p) for (r, d, p) in w] for w in next_set]
             p_i += 1
-            r_i = 0
         w_i += 1
-        window_size = min(window_size + 1, max_requests // 2)
         window = all_requests[i:j]
         i = j
         j += window_size
