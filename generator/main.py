@@ -104,7 +104,7 @@ if __name__ == '__main__':
     j += window_size
     cooldown = 0
     last_relearn = 0
-    relearn_high, relearn_low = False, False
+    relearn_high = False
     low_thresh = 0
     while window:
         cooldown = max(0, cooldown - 1)
@@ -132,17 +132,12 @@ if __name__ == '__main__':
                  f'Avg max distance: {avg_distance:.4f}, '
                  f'learned_size: {len(learned_requests)}, next_size: {sum(map(len, next_set)):4d} ({len(next_set)})'
                  f', high threshold: {high_thresh:.4f}, low threshold: {low_thresh:.4f}, denies: {num_denies}')
-        if avg_distance > high_thresh and not relearn_high and not relearn_low:
+        if avg_distance > high_thresh and not relearn_high:
             log.info(f'Schedule relearn of policy, as {avg_distance:.4f} > {high_thresh:.4f}')
             relearn_high = True
             relearn_schedule_ws.append((w_i, avg_distance))
-        elif avg_distance < low_thresh and not relearn_low and not relearn_high and cooldown == 0:
-            log.info(f'Schedule relearn of policy, as {avg_distance:.4f} < {low_thresh:.4f}')
-            relearn_low = True
-            relearn_schedule_ws.append((w_i, avg_distance))
-        elif (relearn_high and avg_distance <= np.mean(curr_avg_distances)
-              or relearn_low and avg_distance >= np.mean(curr_avg_distances)) or calibrate:
-            log.info(f'Relearn {"high" if relearn_high else "low" if relearn_low else "calibrate"}')
+        elif relearn_high and avg_distance <= np.mean(curr_avg_distances) or calibrate:
+            log.info(f'Relearn {"high" if relearn_high else "calibrate"}')
             next_requests, next_distances, _ = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
             new_policy_path, new_policy_time, new_package = generate_policy(
                 deepcopy(next_requests), next_distances, max_attributes,
@@ -154,10 +149,10 @@ if __name__ == '__main__':
             curr_policy_path, curr_policy_time, curr_package = new_policy_path, new_policy_time, new_package
             learned_requests = next_requests
             cooldown = len(hd_distances)
-            relearn_high, relearn_low = False, False
+            relearn_high = False
             last_relearn = len(avg_distances)
             # next_set.append([(r, d, True) for (r, d, _) in map(lambda w: max(w, key=lambda rr: rr[1]), next_set)])
-            next_set.append([(r, d, True) for (r, d, _) in map(lambda w: max(w, key=lambda rr: rr[1]) if relearn_high else min(w, key=lambda rr: rr[1]), next_set)])
+            next_set.append([(r, d, True) for (r, d, _) in sorted(list(reduce(lambda a, b: a + b, next_set)), key=lambda p: p[1], reverse=True)[:5]])
             # next_set.append([(r, d, True) for (r, d, _) in anomaly_window])
             # next_set = [[(r, d, not p) for (r, d, p) in w] for w in next_set]
             p_i += 1
