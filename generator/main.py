@@ -41,7 +41,7 @@ if __name__ == '__main__':
     diffs_dir = config['paths']['diffs_dir']
     plots_dir = config['paths']['plots_dir']
     log.info(config['settings'])
-    restructure = False
+    restructure = True
     distance_measure = 'cityblock'
     # distance_measure = 'jaccard'
 
@@ -61,7 +61,7 @@ if __name__ == '__main__':
         data_base = os.path.split(data_type)[1].split('.', 1)[0]
         for p in sorted(glob(f'{data_path}/**', recursive=True)):
             if os.path.isfile(p) and os.path.basename(p) == data_type:
-                if 13 <= i <= 15:
+                if 14 <= i <= 14:
                     log.info(f'Loading requests from: {p}')
                     requests = get_requests_from_logs(p, restructure)
                     all_requests.extend(requests)
@@ -71,7 +71,7 @@ if __name__ == '__main__':
         all_requests = get_requests_from_logs(data_path, restructure)
         # all_requests = all_requests[:100000]
         # log.info('\n'.join([json.dumps(r, indent=4) for r in all_requests[:3]]))
-        # all_requests = all_requests[(len(all_requests) // 2) + 5000:]
+        all_requests = all_requests[(len(all_requests) // 2) + 5000:]
         # all_requests = all_requests[(len(all_requests) // 2) - 5000:]
     log.info(f'Total requests: {len(all_requests)}')
 
@@ -97,8 +97,8 @@ if __name__ == '__main__':
         deepcopy(learned_requests), learned_distances, max_attributes,
         generalisation, f'{data_base}_1', tasks_dir, models_dir, policies_dir, data_base, restructure
     )
-    p_i, r_i = 2, len(window)
-    w_i = 2
+    p_i, total_r = 2, len(window)
+    w_i, c_i = 2, 2
     window = all_requests[i:j]
     i = j
     j += window_size
@@ -106,9 +106,10 @@ if __name__ == '__main__':
     last_relearn = 0
     relearn_high = False
     low_thresh = 0
+    volatilities = []
     while window:
         cooldown = max(0, cooldown - 1)
-        r_i += len(window)
+        total_r += len(window)
         maxlen = max_requests // window_size
         distances = compute_distances(deepcopy(window), deepcopy(learned_requests),
                                       distance_measure, max_attributes, restructure)
@@ -127,8 +128,9 @@ if __name__ == '__main__':
         high_thresh = mean_avg_d + 2 * std_avg_d
         low_thresh = max(mean_avg_d - 2 * std_avg_d, 0)
         thresholds.append((w_i, high_thresh, low_thresh))
-        calibrate = r_i % calibrate_interval == 0
-        log.info(f'Window {w_i:3d} ({int((r_i/len(all_requests)) * 100):2d}%) - w_size: {window_size}, '
+        volatilities.append((w_i, std_avg_d))
+        calibrate = c_i % calibrate_interval == 0
+        log.info(f'Window {w_i:3d} ({int((total_r/len(all_requests)) * 100):2d}%) - w_size: {window_size}, '
                  f'Avg max distance: {avg_distance:.4f}, '
                  f'learned_size: {len(learned_requests)}, next_size: {sum(map(len, next_set)):4d} ({len(next_set)})'
                  f', high threshold: {high_thresh:.4f}, low threshold: {low_thresh:.4f}, denies: {num_denies}')
@@ -151,12 +153,12 @@ if __name__ == '__main__':
             cooldown = len(hd_distances)
             relearn_high = False
             last_relearn = len(avg_distances)
-            # next_set.append([(r, d, True) for (r, d, _) in map(lambda w: max(w, key=lambda rr: rr[1]), next_set)])
-            next_set.append([(r, d, True) for (r, d, _) in sorted(list(reduce(lambda a, b: a + b, next_set)), key=lambda p: p[1], reverse=True)[:5]])
-            # next_set.append([(r, d, True) for (r, d, _) in anomaly_window])
-            # next_set = [[(r, d, not p) for (r, d, p) in w] for w in next_set]
+            if not calibrate:
+                next_set.append(deepcopy([(r, d, True) for (r, d, _) in sorted(list(reduce(lambda a, b: a + b, next_set)), key=lambda p: p[1], reverse=True)[:5]]))
             p_i += 1
+            c_i = 0
         w_i += 1
+        c_i += 1
         window = all_requests[i:j]
         i = j
         j += window_size
@@ -174,9 +176,9 @@ if __name__ == '__main__':
     decay_str = str(decay).replace(".", "_")
     name = f'{data_base}-{decay_str}-{distance_measure}'
     plt.legend()
-    plt.title('Average max distance of incoming requests to the learning set')
-    plt.xlabel(f'Window ({window_size} requests)')
-    plt.ylabel(f'Average max distance (approx over the last {len(hd_distances)} windows)')
+    plt.title('Average distance of incoming window to learning set')
+    plt.xlabel(f'Window (size {base_window_size})')
+    plt.ylabel(f'Average distance')
     plt.savefig(f'{plots_dir}/{name}-req_dist.png')
     plt.clf()
     x, w_denies = zip(*denies)
@@ -190,3 +192,10 @@ if __name__ == '__main__':
     plt.savefig(f'{plots_dir}/{name}-denies.png')
     with open(f'{plots_dir}/{name}-denieds.json', 'w') as f:
         f.write(json.dumps(denieds, indent=4))
+    plt.clf()
+    x, volatilities = zip(*volatilities)
+    plt.plot(x, volatilities)
+    plt.title('Average distance volatility per window')
+    plt.xlabel(f'Window ({window_size} requests)')
+    plt.ylabel(f'Standard deviation')
+    plt.savefig(f'{plots_dir}/{name}-volatility.png')
