@@ -55,7 +55,7 @@ settings:
   # calibrate_interval: 200
 
   max_attributes: 30
-  max_requests: 60
+  max_requests: 100
   base_window_size: 10
   generalisation: 1
   decay: 0.7

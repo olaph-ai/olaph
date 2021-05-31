@@ -17,25 +17,20 @@ def _process(orig_data, max_attributes, restructure):
     data = pd.get_dummies(data)
     return data
 
-def num_iforest_anomalies(orig_data, max_attributes, restructure):
+def train_baselines(orig_data, outliers_fraction, distance_metric, max_attributes, restructure):
     data = _process(orig_data, max_attributes, restructure)
-    clf = IsolationForest(random_state=0)
-    clf.fit(data)
-    y_pred = clf.predict(data)
-    anomalies = [orig_data[i] for i in range(len(y_pred)) if y_pred[i] == -1]
-    return len(anomalies), anomalies
+    iforest = IsolationForest(random_state=0, contamination=outliers_fraction)
+    iforest.fit(data)
+    svm = OneClassSVM(nu=outliers_fraction)
+    svm.fit(data)
+    lof = LocalOutlierFactor(n_neighbors=min(20,len(orig_data)-1), novelty=True,
+                             contamination=outliers_fraction, metric=distance_metric)
+    lof.fit(data)
+    return iforest, svm, lof, data.columns
 
-def num_oc_svm_anomalies(orig_data, max_attributes, restructure):
-    data = _process(orig_data, max_attributes, restructure)
-    clf = OneClassSVM()
-    clf.fit(data)
+def num_baseline_anomalies(clf, window, trained_attrs, max_attributes, restructure):
+    data = _process(window, max_attributes, restructure)
+    data = data.reindex(columns=trained_attrs, fill_value=0)
     y_pred = clf.predict(data)
-    anomalies = [orig_data[i] for i in range(len(y_pred)) if y_pred[i] == -1]
-    return len(anomalies), anomalies
-
-def num_lof_anomalies(orig_data, max_attributes, restructure):
-    data = _process(orig_data, max_attributes, restructure)
-    clf = LocalOutlierFactor(n_neighbors=min(20,len(orig_data)-1))
-    y_pred = clf.fit_predict(data)
-    anomalies = [orig_data[i] for i in range(len(y_pred)) if y_pred[i] == -1]
+    anomalies = [window[i] for i in range(len(y_pred)) if y_pred[i] == -1]
     return len(anomalies), anomalies
