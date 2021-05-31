@@ -29,7 +29,7 @@ def train_baselines(orig_data, outliers_fraction, distance_metric, max_attribute
     return iforest, svm, lof, data.columns
 
 def num_baseline_anomalies(clf, window, trained_attrs, max_attributes, restructure):
-    data = _process(window, max_attributes, restructure)
+    data = _process(deepcopy(window), max_attributes, restructure)
     data = data.reindex(columns=trained_attrs, fill_value=0)
     y_pred = clf.predict(data)
     anomalies = [window[i] for i in range(len(y_pred)) if y_pred[i] == -1]

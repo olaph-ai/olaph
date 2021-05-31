@@ -42,7 +42,7 @@ if __name__ == '__main__':
     diffs_dir = config['paths']['diffs_dir']
     plots_dir = config['paths']['plots_dir']
     log.info(config['settings'])
-    restructure = False
+    restructure = True
     distance_measure = 'cityblock'
     # distance_measure = 'jaccard'
 
@@ -74,12 +74,12 @@ if __name__ == '__main__':
         all_requests = get_requests_from_logs(data_path, restructure)
         # all_requests = all_requests[:100000]
         # log.info('\n'.join([json.dumps(r, indent=4) for r in all_requests[:3]]))
-        # all_requests = all_requests[(len(all_requests) // 2) + 5000:]
+        all_requests = all_requests[(len(all_requests) // 2) + 7300:]
         # all_requests = all_requests[(len(all_requests) // 2) - 5000:]
 
-    all_requests = all_requests[(len(all_requests) // 4) * 2:(len(all_requests) // 4) * 3]
     # all_requests = all_requests[(len(all_requests) // 4) * 2:(len(all_requests) // 4) * 4]
 
+    # all_requests = all_requests[(len(all_requests) // 4) * 2:(len(all_requests) // 4) * 3]
 
     # all_requests = all_requests[(len(all_requests) // 4) * 1:(len(all_requests) // 4) * 4]
     # all_requests = all_requests[(len(all_requests) // 4) * 0:(len(all_requests) // 4) * 1 - 10000]
@@ -123,7 +123,9 @@ if __name__ == '__main__':
     low_thresh = 0
     volatilities = []
     avg_denies = []
+    agreeds = []
     baseline_anomalies = []
+    all_agrees = []
     while window:
         cooldown = max(0, cooldown - 1)
         total_r += len(window)
@@ -147,11 +149,16 @@ if __name__ == '__main__':
         b_anomalies.append(lof_anomalies)
         intersection_anomalies = list(reduce(lambda a, b: a.intersection(b),
                                              map(lambda ans: set(map(json.dumps, ans)), b_anomalies)))
+        agrees = set(map(json.dumps, denied_rs)).intersection(intersection_anomalies)
+        num_agrees = len(agrees)
+        all_agrees.append(num_agrees)
+        agreeds.extend(list(agrees))
         baseline_anomalies.extend(intersection_anomalies)
         num_int = len(intersection_anomalies)
-        denies.append((w_i, num_denies, num_iforest, num_svm, num_lof, num_int))
-        _, d_olaf, d_if, d_svm, d_lof, d_int = list(zip(*(denies[last_relearn:])))
-        avg_denies.append((w_i, np.mean(d_olaf), np.mean(d_if), np.mean(d_svm), np.mean(d_lof), np.mean(d_int)))
+        denies.append((w_i, num_denies, num_iforest, num_svm, num_lof, num_int, num_agrees))
+        _, d_olaf, d_if, d_svm, d_lof, d_int, d_agrees = list(zip(*(denies[last_relearn:])))
+        avg_denies.append((w_i, np.mean(d_olaf), np.mean(d_if), np.mean(d_svm),
+                           np.mean(d_lof), np.mean(d_int), np.mean(d_agrees)))
         hd_distances = list(map(lambda w: max(list(zip(*w))[1]), next_set))
         avg_distance = np.mean(hd_distances)
         avg_distances.append((w_i, avg_distance))
@@ -168,7 +175,8 @@ if __name__ == '__main__':
                  f'Avg max distance: {avg_distance:.4f}, '
                  f'learned_size: {len(learned_requests)}, next_size: {sum(map(len, next_set)):4d} ({len(next_set)})'
                  f', high threshold: {high_thresh:.4f}, low threshold: {low_thresh:.4f}, denies: {num_denies}, '
-                 f'iforest: {num_iforest}, oc_svm: {num_svm}, lof: {num_lof}, intersection: {num_int}')
+                 f'iforest: {num_iforest}, oc_svm: {num_svm}, lof: {num_lof}, intersect: {num_int}, '
+                 f'agree: {num_agrees}')
         if avg_distance > high_thresh and not relearn_high and not relearn_low:
             log.info(f'Schedule relearn of policy, as {avg_distance:.4f} > {high_thresh:.4f}')
             relearn_high = True
@@ -202,8 +210,8 @@ if __name__ == '__main__':
             learned_requests = next_requests
             cooldown = len(hd_distances)
             last_relearn = len(avg_distances)
-            if not calibrate:
-                next_set.append(deepcopy([(r, d, True) for (r, d, _) in sorted(list(filter(lambda r: not r[2], reduce(lambda a, b: a + b, next_set))), key=lambda p: p[1], reverse=relearn_high)[:window_size]]))
+            if not calibrate and not relearn_low:
+                next_set.append(deepcopy([(r, d, True) for (r, d, _) in sorted(list(filter(lambda r: not r[2], reduce(lambda a, b: a + b, next_set))), key=lambda p: p[1], reverse=True)[:window_size]]))
             relearn_high, relearn_low = False, False
             p_i += 1
             c_i = 0
@@ -256,18 +264,36 @@ if __name__ == '__main__':
     plt.ylabel(f'Standard deviation')
     plt.savefig(f'{plots_dir}/{name}-volatility.png')
     plt.clf()
-    x, olaf_d, if_d, svm_d, lof_d, int_d = zip(*avg_denies)
+    x, olaf_d, if_d, svm_d, lof_d, int_d, agrees_d = zip(*avg_denies)
     plt.plot(x, olaf_d, label='OLAPH')
     # plt.plot(x, if_d, label='iForest')
     # plt.plot(x, svm_d, label='OC-SVM')
     # plt.plot(x, lof_d, label='LOF')
     plt.plot(x, int_d, label='intersection')
+    plt.plot(x, agrees_d, label='agreed')
     plt.title('Average denies since last relearn')
     plt.xlabel(f'Window ({window_size} requests)')
     plt.ylabel(f'Avg denies')
     plt.legend()
     plt.savefig(f'{plots_dir}/{name}-avg_denies.png')
-
+    plt.clf()
+    plt.plot(x, olaf_d, label='OLAPH')
+    plt.plot(x, if_d, label='iForest')
+    plt.plot(x, svm_d, label='OC-SVM')
+    plt.plot(x, lof_d, label='LOF')
+    plt.title('Average denies since last relearn')
+    plt.xlabel(f'Window ({window_size} requests)')
+    plt.ylabel(f'Avg denies')
+    plt.legend()
+    plt.savefig(f'{plots_dir}/{name}-avg_denies_all.png')
+    # plt.clf()
+    # plt.plot(x, agrees_d)
+    # plt.title('Average agreed anomalies since last relearn')
+    # plt.xlabel(f'Window ({window_size} requests)')
+    # plt.ylabel(f'Num agreed anomalies')
+    # plt.savefig(f'{plots_dir}/{name}-agrees.png')
+    with open(f'{plots_dir}/{name}-agreeds.json', 'w') as f:
+        f.write(json.dumps(agreeds, indent=4))
 
             # if not calibrate:
             #     next_set.append([(r, d, True) for (r, d, p) in list(reduce(lambda a,b:a+b, next_set)) if not p])

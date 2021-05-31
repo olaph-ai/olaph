@@ -1,8 +1,11 @@
 paths:
+  # data: lacework/agent/2021-05-26/2021-05-26-13-00/pod_summary.json.gz
+  data: synth-heart13.log
+
+
   # data: synth-heart13.log
   # data: lacework/agent/2021-05-27/2021-05-27-00-00/dns_query.json.gz
   # data: lacework/agent/2021-05-27/2021-05-27-00-00/process_summary.json.gz
-  data: lacework/agent/2021-05-26/2021-05-26-13-00/pod_summary.json.gz
   # data: lacework2/lacework/agent/2021-05-27
   # data_type: pod_summary.json.gz
   # data: lacework/agent/2021-05-27/2021-05-27-00-00/connections.json.gz
@@ -54,9 +57,16 @@ settings:
   # decay: 0.7
   # calibrate_interval: 200
 
+  # max_attributes: 30
+  # max_requests: 80
+  # base_window_size: 10
+  # generalisation: 1
+  # decay: 0.8
+  # calibrate_interval: 200
+
   max_attributes: 30
-  max_requests: 100
-  base_window_size: 10
+  max_requests: 120
+  base_window_size: 20
   generalisation: 1
   decay: 0.7
   calibrate_interval: 200
