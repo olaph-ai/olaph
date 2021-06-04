@@ -10,11 +10,16 @@ def get_opa_denies(window, policy_path, package, restructure):
     denied_path = 'denied.rego'
     denied = f'''
 package {package}
-denied := [i | d := allow with input as input[i]; r := d.allowed; not r]
+denied := [i | d := allow with input as input[i]; not d]
 '''
     with open(denied_path, 'w') as f:
         f.write(denied)
-    out = run(f'opa eval -f pretty -I -d {policy_path} -d {denied_path} "data.{package}.denied"',
-              shell=True, check=True, text=True, capture_output=True, input=rs)
+    try:
+        out = run(f'opa eval -f pretty -I -d {policy_path} -d {denied_path} "data.{package}.denied"',
+                  shell=True, check=True, text=True, capture_output=True, input=rs)
+    except CalledProcessError as e:
+        log.error(e.stdout + e.stderr)
+        log.error(rs)
+        log.error(denied)
     denied_rs = [window[int(i)] for i in json.loads(out.stdout)]
     return len(denied_rs), denied_rs

@@ -12,10 +12,8 @@ import input.parsed_body
 import input.parsed_path
 import input.parsed_query""" if restructure else '') + f"""
 
-default allow = {{
-    "allowed": false,
-    "frequency": 0
-}}
+# frequency: 0
+default allow = false
 """
     rego_policy = []
     for rule, frequency in sorted(model, reverse=True, key=lambda p: p[1]):
@@ -25,10 +23,8 @@ default allow = {{
         else:
             if rule[0]:
                 rego_policy.append(f"""
-{rule[0].strip()[:-1]} = {{
-    \"allowed\": true,
-    \"frequency\": {round(frequency, 4)}
-}}
+# frequency: {round(frequency, 4)}
+{rule[0].strip()[:-1]} = true
 """)
             else:
                 preamble = ''
@@ -55,12 +51,9 @@ default allow = {{
         rego_body.sort()
         rego_body = '\n    '.join(rego_body)
         rego_policy.append(f"""
-{head.strip()} = response {{
+# frequency: {round(frequency, 4)}
+{head.strip()} {{
     {rego_body}
-    response := {{
-        \"allowed\": true,
-        \"frequency\": {round(frequency, 4)}
-    }}
 }}
 """)
     return preamble + '\n'.join(rego_policy), package

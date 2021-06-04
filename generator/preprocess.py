@@ -28,14 +28,15 @@ def _restructure_request(request):
     request['input']['attributes']['request']['http'].pop('path')
     request['input'].pop('truncated_body')
     request['input'].pop('version')
+    request['input']['attributes']['request']['http'].pop('headers')  # New
     # Shortcuts for Rego imports
     request['source'] = request['input']['attributes']['source']['address'].pop('socketAddress')
     request['destination'] = request['input']['attributes']['destination']['address'].pop('socketAddress')
-    request['headers'] = request['input']['attributes']['request']['http'].pop('headers')
+    # request['headers'] = request['input']['attributes']['request']['http'].pop('headers')
     request['request'] = request['input']['attributes']['request'].pop('http')
 
     user_input = {}
-    user_input['headers'] = request.pop('headers')
+    # user_input['headers'] = request.pop('headers')
     if d := request['input'].pop('parsed_body', None):
         user_input['parsed_body'] = d
     if d := request['input'].pop('parsed_query', None):
@@ -55,11 +56,11 @@ def get_requests_from_logs(path, restructure):
 
 def _get_logs(path, restructure):
     logs = []
-    with open(path, 'r') if restructure else gzip.open(path, 'rb') as f:
+    with open(path, 'r') if restructure else open(path, 'rb') as f:
         for i, l in enumerate(f.readlines()):
             try:
-                log = json.loads(l)
-                logs.append(log)
+                logg = json.loads(l)
+                logs.append(logg)
             except:
                 if l.replace('\n', ''):
                     print(f'error at {i}:\n{l}')
@@ -89,6 +90,21 @@ def _select_features(ds, max_attributes):
     encoded = pd.DataFrame(OrdinalEncoder().fit_transform(data.astype(str)), columns=data.columns)
     heavy_tailedness = encoded.kurtosis().sort_values(ascending=False)
     chosen_attributes = sorted(heavy_tailedness.index.sort_values().to_list())[:max_attributes]
+    # if len(data.columns) > 0:
+    #     k_max = heavy_tailedness[0]
+    #     k_min = heavy_tailedness[-1]
+    #     dk_max = encoded[heavy_tailedness.index[0]]
+    #     dk_min = encoded[heavy_tailedness.index[-1]]
+    #     import matplotlib.pyplot as plt
+    #     plt.plot(dk_max.index, dk_max, label=f'max (v = {k_max:.1f})')
+    #     plt.plot(dk_min.index, dk_min, label=f'min (v = {k_min:.1f})')
+    #     plt.title('Distribution of encoded attribute')
+    #     plt.xlabel('Request')
+    #     plt.ylabel('Encoded attribute value')
+    #     plt.legend()
+    #     plt.savefig('/plots/variance.png')
+    #     import sys
+    #     sys.exit(0)
     return list(map(lambda d: {k: v for k, v in d.items() if k in chosen_attributes}, ds)), len(chosen_attributes)
 
 def select_features(data, max_attributes):
@@ -101,7 +117,7 @@ def process_examples(requests, max_attributes, restructure):
     if restructure:
         processed = list(map(_restructure_request, requests))
     else:
-        processed = list(map(lambda r: (dict(), {(k[0].lower(),) + k[1:]: v for k, v in flatten(r).items()}), requests))
+        processed = list(map(lambda r: (dict(), {(k[0].lower(),) + k[1:]: v for k, v in flatten(r).items() if k[1] != 'end_time' and k[1] != 'start_time' and 'CONTAINER_START_TIME' not in k and 'IMAGE_ID' not in k and 'IMAGE_PARENT_ID' not in k}), requests))
     return select_features(processed, max_attributes)
 
 def preprocess_data(requests, max_attributes, restructure):

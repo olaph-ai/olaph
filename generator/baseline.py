@@ -32,5 +32,6 @@ def num_baseline_anomalies(clf, window, trained_attrs, max_attributes, restructu
     data = _process(deepcopy(window), max_attributes, restructure)
     data = data.reindex(columns=trained_attrs, fill_value=0)
     y_pred = clf.predict(data)
+    y_scores = clf.score_samples(data)
     anomalies = [window[i] for i in range(len(y_pred)) if y_pred[i] == -1]
-    return len(anomalies), anomalies
+    return len(anomalies), anomalies, y_scores

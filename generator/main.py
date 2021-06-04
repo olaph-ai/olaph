@@ -14,6 +14,7 @@ from distance import compute_distances, compute_hd_distance
 from run_opa import get_opa_denies
 from generator import generate_policy, generate_policy_diff
 from sklearn.preprocessing import normalize
+from sklearn.metrics import roc_curve
 from baseline import train_baselines, num_baseline_anomalies
 import logging
 
@@ -24,14 +25,14 @@ def clear_dir(path, name):
     for f in glob(f'{path}/{name}*'):
         os.remove(f)
 
-def decay_examples(next_set, drop_threshold, maxlen):
+def decay_examples(next_set, decay, drop_threshold, maxlen):
     return deque(filter(None,  # Remove empty lists
                        map(lambda w: [(r, decay * d, p) if not p else (r, d, p) for (r, d, p) in w
                                       if p or d > drop_threshold],  # Decay examples
                            next_set)
                         ), maxlen=maxlen)
 
-if __name__ == '__main__':
+def run(TPRs, FPRs, generalisation, run_i):
     with open(os.getenv('CONFIG'), 'r') as f:
         config = yaml.safe_load(f)
     data = config['paths']['data']
@@ -42,14 +43,14 @@ if __name__ == '__main__':
     diffs_dir = config['paths']['diffs_dir']
     plots_dir = config['paths']['plots_dir']
     log.info(config['settings'])
-    restructure = True
+    restructure = False
     distance_measure = 'cityblock'
     # distance_measure = 'jaccard'
 
     max_attributes = int(config['settings']['max_attributes'])
     max_requests = int(config['settings']['max_requests'])
     base_window_size = int(config['settings']['base_window_size'])
-    generalisation = int(config['settings']['generalisation'])
+    # generalisation = max(float(config['settings']['generalisation']), 0)
     decay = float(config['settings']['decay'])
     calibrate_interval = max(int(config['settings']['calibrate_interval']), 1)
     differ = dl.HtmlDiff(wrapcolumn=80)
@@ -61,25 +62,33 @@ if __name__ == '__main__':
         all_requests = []
         i = 0
         data_type = config['paths']['data_type']
-        data_base = os.path.split(data_type)[1].split('.', 1)[0]
+        data_base = os.path.split(data_type)[1].split('.', 1)[0] + f'_new2_g{str(generalisation).replace(".", "_")}'
         for p in sorted(glob(f'{data_path}/**', recursive=True)):
             if os.path.isfile(p) and os.path.basename(p) == data_type:
-                if 12 <= i <= 15:
+                if 13 <= i <= 13:
                     log.info(f'Loading requests from: {p}')
                     requests = get_requests_from_logs(p, restructure)
                     all_requests.extend(requests)
                 i += 1
+        # all_requests = all_requests[int((len(all_requests) // 4) * 3):(len(all_requests) // 4) * 4]
+        # all_requests = all_requests[(len(all_requests) // 4) * 2:(len(all_requests) // 4) * 4]
     else:
-        data_base = os.path.split(data)[1].split('.', 1)[0]
+        data_base = os.path.split(data)[1].split('.', 1)[0] + f'_new2_g{str(generalisation).replace(".", "_")}'
         all_requests = get_requests_from_logs(data_path, restructure)
+        # all_requests = all_requests[(len(all_requests) // 2) + 7300:]
+
         # all_requests = all_requests[:100000]
         # log.info('\n'.join([json.dumps(r, indent=4) for r in all_requests[:3]]))
-        all_requests = all_requests[(len(all_requests) // 2) + 7300:]
         # all_requests = all_requests[(len(all_requests) // 2) - 5000:]
+
+    # third_party_anomalies = [133, 1296, 1550, 1665] + [1201]
+    third_party_anomalies = [133] + [914] + [1202] + [1670] + [1747]
 
     # all_requests = all_requests[(len(all_requests) // 4) * 2:(len(all_requests) // 4) * 4]
 
     # all_requests = all_requests[(len(all_requests) // 4) * 2:(len(all_requests) // 4) * 3]
+
+    # all_requests = all_requests[(len(all_requests) // 4) * 3:(len(all_requests) // 4) * 4]
 
     # all_requests = all_requests[(len(all_requests) // 4) * 1:(len(all_requests) // 4) * 4]
     # all_requests = all_requests[(len(all_requests) // 4) * 0:(len(all_requests) // 4) * 1 - 10000]
@@ -117,7 +126,6 @@ if __name__ == '__main__':
     window = all_requests[i:j]
     i = j
     j += window_size
-    cooldown = 0
     last_relearn = 0
     relearn_high, relearn_low = False, False
     low_thresh = 0
@@ -126,40 +134,71 @@ if __name__ == '__main__':
     agreeds = []
     baseline_anomalies = []
     all_agrees = []
+    tp, tn, fp, fn = 0, 0, 0, 0
+    b_trues, b_scores = [], [[], [], []]
     while window:
-        cooldown = max(0, cooldown - 1)
-        total_r += len(window)
         maxlen = max_requests // window_size
         distances = compute_distances(deepcopy(window), deepcopy(learned_requests),
                                       distance_measure, max_attributes, restructure)
-        next_set = decay_examples(next_set, low_thresh, maxlen)
+        next_set = decay_examples(next_set, decay, low_thresh, maxlen)
         next_window = list(zip(window, distances, [False] * len(window)))
         next_set.append(next_window)
         num_denies, denied_rs = get_opa_denies(window, curr_policy_path, curr_package, restructure)
+        tpa = 0
+        a_i = total_r
+        for a_j, r in enumerate(window):
+            true_anomaly = (a_i + a_j) in third_party_anomalies
+            if true_anomaly:
+                tpa += 1
+                b_trues.append(-1)
+                if r in denied_rs:
+                    tp += 1
+                else:
+                    fn += 1
+            else:
+                b_trues.append(1)
+                if r in denied_rs:
+                    fp += 1
+                else:
+                    tn += 1
         denieds.extend(denied_rs)
         b_anomalies = []
-        num_iforest, if_anomalies = num_baseline_anomalies(iforest, deepcopy(window), trained_attrs,
-                                                           max_attributes, restructure)
+        num_iforest, if_anomalies, scores = num_baseline_anomalies(iforest, deepcopy(window), trained_attrs,
+                                                                      max_attributes, restructure)
+        b_scores[0].extend(list(scores))
         b_anomalies.append(if_anomalies)
-        num_svm, svm_anomalies = num_baseline_anomalies(svm, deepcopy(window), trained_attrs,
+        num_svm, svm_anomalies, scores = num_baseline_anomalies(svm, deepcopy(window), trained_attrs,
                                                         max_attributes, restructure)
+        b_scores[1].extend(list(scores))
         b_anomalies.append(svm_anomalies)
-        num_lof, lof_anomalies = num_baseline_anomalies(lof, deepcopy(window), trained_attrs,
+        num_lof, lof_anomalies, scores = num_baseline_anomalies(lof, deepcopy(window), trained_attrs,
                                                         max_attributes, restructure)
+        b_scores[2].extend(list(scores))
         b_anomalies.append(lof_anomalies)
         intersection_anomalies = list(reduce(lambda a, b: a.intersection(b),
                                              map(lambda ans: set(map(json.dumps, ans)), b_anomalies)))
+        total_r += len(window)
         agrees = set(map(json.dumps, denied_rs)).intersection(intersection_anomalies)
         num_agrees = len(agrees)
         all_agrees.append(num_agrees)
         agreeds.extend(list(agrees))
         baseline_anomalies.extend(intersection_anomalies)
         num_int = len(intersection_anomalies)
-        denies.append((w_i, num_denies, num_iforest, num_svm, num_lof, num_int, num_agrees))
-        _, d_olaf, d_if, d_svm, d_lof, d_int, d_agrees = list(zip(*(denies[last_relearn:])))
+        denies.append((w_i, num_denies, num_iforest, num_svm, num_lof, num_int, num_agrees, tpa))
+        _, d_olaf, d_if, d_svm, d_lof, d_int, d_agrees, d_tpa = list(zip(*(denies[last_relearn:])))
         avg_denies.append((w_i, np.mean(d_olaf), np.mean(d_if), np.mean(d_svm),
-                           np.mean(d_lof), np.mean(d_int), np.mean(d_agrees)))
+                           np.mean(d_lof), np.mean(d_int), np.mean(d_agrees), np.mean(d_tpa)))
         hd_distances = list(map(lambda w: max(list(zip(*w))[1]), next_set))
+        # if w_i == 24:
+        #     mean_distances = list(map(lambda w: np.mean(list(zip(*w))[1]), next_set))
+        #     import matplotlib.pyplot as plt
+        #     plt.plot(range(len(hd_distances)), hd_distances)
+        #     plt.title('Maximum distance of incoming windows to the learned set')
+        #     plt.xlabel('Window')
+        #     plt.ylabel('Directed Hausdorff distance')
+        #     plt.savefig('/plots/hausdorff.png')
+        #     import sys
+        #     sys.exit(0)
         avg_distance = np.mean(hd_distances)
         avg_distances.append((w_i, avg_distance))
         curr_avg_distances = list(zip(*avg_distances[last_relearn if last_relearn != 0 else max(0,w_i-10):]))[1]
@@ -174,9 +213,9 @@ if __name__ == '__main__':
         log.info(f'Window {w_i:3d} ({int((total_r/len(all_requests)) * 100):2d}%) - w_size: {window_size}, '
                  f'Avg max distance: {avg_distance:.4f}, '
                  f'learned_size: {len(learned_requests)}, next_size: {sum(map(len, next_set)):4d} ({len(next_set)})'
-                 f', high threshold: {high_thresh:.4f}, low threshold: {low_thresh:.4f}, denies: {num_denies}, '
-                 f'iforest: {num_iforest}, oc_svm: {num_svm}, lof: {num_lof}, intersect: {num_int}, '
-                 f'agree: {num_agrees}')
+                 f', high thresh: {high_thresh:.4f}, low thresh: {low_thresh:.4f}, denies: {num_denies}, '
+                 f'iforest: {num_iforest}, svm: {num_svm}, lof: {num_lof}, int: {num_int}, '
+                 f'agree: {num_agrees}, tpa: {tpa}')
         if avg_distance > high_thresh and not relearn_high and not relearn_low:
             log.info(f'Schedule relearn of policy, as {avg_distance:.4f} > {high_thresh:.4f}')
             relearn_high = True
@@ -208,7 +247,6 @@ if __name__ == '__main__':
             relearn_windows.append((w_i, avg_distance, num_denies))
             curr_policy_path, curr_policy_time, curr_package = new_policy_path, new_policy_time, new_package
             learned_requests = next_requests
-            cooldown = len(hd_distances)
             last_relearn = len(avg_distances)
             if not calibrate and not relearn_low:
                 next_set.append(deepcopy([(r, d, True) for (r, d, _) in sorted(list(filter(lambda r: not r[2], reduce(lambda a, b: a + b, next_set))), key=lambda p: p[1], reverse=True)[:window_size]]))
@@ -220,6 +258,31 @@ if __name__ == '__main__':
         window = all_requests[i:j]
         i = j
         j += window_size
+    log.info(f'tp: {tp}, tn: {tn}, fp: {fp}, fn: {fn}')
+    if (tp + fp) > 0:
+        precision = tp / (tp + fp)
+        log.info(f'precision: {precision:.4f}')
+    else:
+        precision = 0
+    if (tp + fn) > 0:
+        TPR = recall = tp / (tp + fn)
+        log.info(f'recall: {recall:.4f}')
+        if (tn + fp) > 0:
+            TNR = tn/(tn + fp)
+            FPR = 1 - TNR
+            TPRs.append(TPR)
+            FPRs.append(FPR)
+            b_acc = (TPR + TNR) / 2
+            log.info(f'b_acc: {b_acc:.4f}')
+    else:
+        recall = 0
+    if (tp + tn + fp + fn) > 0:
+        accuracy = (tp + tn) / (tp + tn + fp + fn)
+        log.info(f'accuracy: {accuracy:.4f}')
+    if precision > 0 or recall > 0:
+        f_score = 2 * (precision * recall)/(precision + recall)
+        log.info(f'f1: {f_score:4f}')
+    plt.clf()
     x, avg_distances = zip(*avg_distances)
     plt.plot(x, avg_distances)
     x, high_relearn_thresholds, low_relearn_thresholds = zip(*thresholds)
@@ -231,6 +294,8 @@ if __name__ == '__main__':
     if relearn_windows:
         x_relearn, y1_relearn, y2_relearn = zip(*relearn_windows)
         plt.plot(x_relearn, y1_relearn, 'ro', label='relearn')
+    else:
+        x_relearn = []
     decay_str = str(decay).replace(".", "_")
     name = f'{data_base}-{decay_str}-{distance_measure}'
     plt.legend()
@@ -239,8 +304,9 @@ if __name__ == '__main__':
     plt.ylabel(f'Average distance')
     plt.savefig(f'{plots_dir}/{name}-req_dist.png')
     # plt.clf()
-    # x, w_denies, if_denies, svm_denies, lof_denies = zip(*denies)
-    # plt.plot(x, w_denies, label='OLAPH')
+    # x, w_denies, _, _, _, _, _, tpa_denies = zip(*denies)
+    # plt.plot(x, w_denies, 'x', label='OLAPH')
+    # plt.plot(x, tpa_denies, 'X', label='Third party')
     # plt.plot(x, if_denies, label='iForest')
     # plt.plot(x, svm_denies, label='OC-SVM')
     # plt.plot(x, lof_denies, label='LOF')
@@ -254,23 +320,28 @@ if __name__ == '__main__':
     # plt.savefig(f'{plots_dir}/{name}-denies.png')
     with open(f'{plots_dir}/{name}-denieds.json', 'w') as f:
         f.write(json.dumps(denieds, indent=4))
-    with open(f'{plots_dir}/{name}-iforest_anomalies.json', 'w') as f:
+    with open(f'{plots_dir}/{name}-intersection_anomalies.json', 'w') as f:
         f.write(json.dumps(baseline_anomalies, indent=4))
     plt.clf()
     x, volatilities = zip(*volatilities)
     plt.plot(x, volatilities)
+    for (i, w) in enumerate(x_relearn):
+        if i == 0:
+            plt.axvline(w, 0, 1, label='Relearn', color='k', linestyle='--', linewidth=0.5)
+        else:
+            plt.axvline(w, 0, 1, color='k', linestyle='--', linewidth=0.5)
     plt.title('Average distance volatility per window')
     plt.xlabel(f'Window ({window_size} requests)')
     plt.ylabel(f'Standard deviation')
     plt.savefig(f'{plots_dir}/{name}-volatility.png')
     plt.clf()
-    x, olaf_d, if_d, svm_d, lof_d, int_d, agrees_d = zip(*avg_denies)
+    half = len(x) // 2
+    x, olaf_d, if_d, svm_d, lof_d, int_d, agrees_d, tpa_d = map(lambda av: av[half:], list(zip(*avg_denies)))
     plt.plot(x, olaf_d, label='OLAPH')
     # plt.plot(x, if_d, label='iForest')
     # plt.plot(x, svm_d, label='OC-SVM')
     # plt.plot(x, lof_d, label='LOF')
     plt.plot(x, int_d, label='intersection')
-    plt.plot(x, agrees_d, label='agreed')
     plt.title('Average denies since last relearn')
     plt.xlabel(f'Window ({window_size} requests)')
     plt.ylabel(f'Avg denies')
@@ -281,6 +352,15 @@ if __name__ == '__main__':
     plt.plot(x, if_d, label='iForest')
     plt.plot(x, svm_d, label='OC-SVM')
     plt.plot(x, lof_d, label='LOF')
+    plt.plot(x, tpa_d, label='Third party')
+    i = 0
+    for w in x_relearn:
+        if w in x:
+            if i == 0:
+                plt.axvline(w, 0, 1, label='Relearn', color='k', linestyle='--', linewidth=0.5)
+            else:
+                plt.axvline(w, 0, 1, color='k', linestyle='--', linewidth=0.5)
+            i += 1
     plt.title('Average denies since last relearn')
     plt.xlabel(f'Window ({window_size} requests)')
     plt.ylabel(f'Avg denies')
@@ -294,8 +374,36 @@ if __name__ == '__main__':
     # plt.savefig(f'{plots_dir}/{name}-agrees.png')
     with open(f'{plots_dir}/{name}-agreeds.json', 'w') as f:
         f.write(json.dumps(agreeds, indent=4))
+    return roc_curve(b_trues, b_scores[0]), roc_curve(b_trues, b_scores[1]), roc_curve(b_trues, b_scores[2])
 
-            # if not calibrate:
-            #     next_set.append([(r, d, True) for (r, d, p) in list(reduce(lambda a,b:a+b, next_set)) if not p])
-            # if not calibrate:
-            #     next_set.append(deepcopy([(r, d, True) for (r, d, _) in sorted(list(filter(lambda r: not r[2], reduce(lambda a, b: a + b, next_set))), key=lambda p: p[1], reverse=True)[:1]]))
+
+if __name__ == '__main__':
+    TPRs, FPRs = [], []
+    gs = list(np.arange(0.25, 2.25, 0.25))
+    # gs = list(np.arange(0, 17, 2))
+    log.info(f'gs: {gs}')
+    for run_i, g in enumerate(gs):
+        log.info(f'Running for generalisation: {g}')
+        if_roc, svm_roc, lof_roc = run(TPRs, FPRs, g, run_i)
+        log.info(TPRs)
+        log.info(FPRs)
+    plt.clf()
+    s_FPR, s_TPR = zip(*list(sorted(list(zip(FPRs, TPRs)) + [(1, 1)] + [(0, 0)], key=lambda x: x[0])))
+    AUC = np.trapz(s_TPR, s_FPR)
+    log.info(f'OLAPH AUC: {AUC}')
+    plt.xlim(0, 1.1)
+    plt.ylim(0, 1.1)
+    plt.plot(s_FPR, s_TPR, label='OLAPH')
+    fpr, tpr, thresholds = if_roc
+    plt.plot(fpr, tpr, label='iForest')
+    fpr, tpr, thresholds = svm_roc
+    plt.plot(fpr, tpr, label='OC-SVM')
+    fpr, tpr, thresholds = lof_roc
+    plt.plot(fpr, tpr, label='LOF')
+    # plt.xlim([0, 1])
+    # plt.ylim([0, 1])
+    plt.legend()
+    plt.title('AUC-ROC curve')
+    plt.xlabel(f'FPR')
+    plt.ylabel(f'TPR')
+    plt.savefig(f'/plots/test_roc-auc_new4.png')
