@@ -42,7 +42,8 @@ default allow = false
                     rego_atom.append(f'[{term}]')
                 else:
                     term = term[1:][:-1]
-                    if name in ['headers', 'parsed_query', 'parsed_body'] or term.isnumeric():
+                    if (name in ['headers', 'parsed_query', 'parsed_body'] or term.isnumeric()
+                        or not term.replace('_', '').isalpha()):
                         rego_atom.append(f'["{term}"]')
                     else:
                         rego_atom.append(f'.{term}')

@@ -15,7 +15,7 @@ from run_opa import get_opa_denies
 from generator import generate_policy, generate_policy_diff
 from sklearn.preprocessing import normalize
 from sklearn.metrics import roc_curve
-from baseline import train_baselines, num_baseline_anomalies
+from baseline import train_baselines, num_baseline_anomalies, offline_baseline_roc_aucs
 import logging
 
 logging.basicConfig(level=logging.INFO, format='%(name)s: %(levelname)s - %(message)s')
@@ -32,7 +32,7 @@ def decay_examples(next_set, decay, drop_threshold, maxlen):
                            next_set)
                         ), maxlen=maxlen)
 
-def run(TPRs, FPRs, generalisation, run_i):
+def run(TPRs, FPRs, generalisation, run_i, third_party_anomalies):
     with open(os.getenv('CONFIG'), 'r') as f:
         config = yaml.safe_load(f)
     data = config['paths']['data']
@@ -70,28 +70,11 @@ def run(TPRs, FPRs, generalisation, run_i):
                     requests = get_requests_from_logs(p, restructure)
                     all_requests.extend(requests)
                 i += 1
-        # all_requests = all_requests[int((len(all_requests) // 4) * 3):(len(all_requests) // 4) * 4]
-        # all_requests = all_requests[(len(all_requests) // 4) * 2:(len(all_requests) // 4) * 4]
     else:
         data_base = os.path.split(data)[1].split('.', 1)[0] + f'_new2_g{str(generalisation).replace(".", "_")}'
         all_requests = get_requests_from_logs(data_path, restructure)
-        # all_requests = all_requests[(len(all_requests) // 2) + 7300:]
+        # all_requests = all_requests[(len(all_requests) // 2) + 7300:][:2000]
 
-        # all_requests = all_requests[:100000]
-        # log.info('\n'.join([json.dumps(r, indent=4) for r in all_requests[:3]]))
-        # all_requests = all_requests[(len(all_requests) // 2) - 5000:]
-
-    # third_party_anomalies = [133, 1296, 1550, 1665] + [1201]
-    third_party_anomalies = [133] + [914] + [1202] + [1670] + [1747]
-
-    # all_requests = all_requests[(len(all_requests) // 4) * 2:(len(all_requests) // 4) * 4]
-
-    # all_requests = all_requests[(len(all_requests) // 4) * 2:(len(all_requests) // 4) * 3]
-
-    # all_requests = all_requests[(len(all_requests) // 4) * 3:(len(all_requests) // 4) * 4]
-
-    # all_requests = all_requests[(len(all_requests) // 4) * 1:(len(all_requests) // 4) * 4]
-    # all_requests = all_requests[(len(all_requests) // 4) * 0:(len(all_requests) // 4) * 1 - 10000]
     with open('/tasks/reqs.tmp', 'w') as f:
         f.write(json.dumps(all_requests, indent=4))
     log.info(f'Total requests: {len(all_requests)}')
@@ -230,6 +213,7 @@ def run(TPRs, FPRs, generalisation, run_i):
                 f.write(json.dumps(list(zip(*list(reduce(lambda a, b: a + b, next_set))))[0], indent=4))
         elif (relearn_high and avg_distance <= np.mean(curr_avg_distances)
               or relearn_low and avg_distance >= np.mean(curr_avg_distances)) or calibrate:
+        # if relearn_high or relearn_low:
             next_requests, next_distances, permanents = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
             outliers_fraction = max(min(permanents.count(False)/len(permanents), 0.5), 0.1)
             strr = "high" if relearn_high else "low" if relearn_low else "calibrate"
@@ -299,7 +283,7 @@ def run(TPRs, FPRs, generalisation, run_i):
     decay_str = str(decay).replace(".", "_")
     name = f'{data_base}-{decay_str}-{distance_measure}'
     plt.legend()
-    plt.title('Average distance of incoming window to learning set')
+    plt.title('Average distance of learning set to learned set')
     plt.xlabel(f'Window (size {base_window_size})')
     plt.ylabel(f'Average distance')
     plt.savefig(f'{plots_dir}/{name}-req_dist.png')
@@ -330,8 +314,9 @@ def run(TPRs, FPRs, generalisation, run_i):
             plt.axvline(w, 0, 1, label='Relearn', color='k', linestyle='--', linewidth=0.5)
         else:
             plt.axvline(w, 0, 1, color='k', linestyle='--', linewidth=0.5)
-    plt.title('Average distance volatility per window')
-    plt.xlabel(f'Window ({window_size} requests)')
+        plt.legend()
+    plt.title('Average distance volatility since last relearn')
+    plt.xlabel(f'Window (size {window_size})')
     plt.ylabel(f'Standard deviation')
     plt.savefig(f'{plots_dir}/{name}-volatility.png')
     plt.clf()
@@ -378,32 +363,68 @@ def run(TPRs, FPRs, generalisation, run_i):
 
 
 if __name__ == '__main__':
+    third_party_anomalies = [133] + [914] + [1202] + [1670] + [1747]
+    # with open(os.getenv('CONFIG'), 'r') as f:
+    #     config = yaml.safe_load(f)
+    # data = config['paths']['data']
+    # data_dir = config['paths']['data_dir']
+    # data_path = f'{data_dir}/{data}'
+    # restructure = False
+    # all_requests = get_requests_from_logs(data_path, restructure)
+    # labels = [-1 if i in third_party_anomalies else 1 for i, _ in enumerate(all_requests)]
+    # if_rc, svm_rc, lof_rc = offline_baseline_roc_aucs(all_requests, labels, 0.5, 'cityblock', 30, restructure)
+    # if_fpr, if_tpr, _ = if_rc
+    # svm_fpr, svm_tpr, _ = svm_rc
+    # lof_fpr, lof_tpr, _ = lof_rc
+    # if_auc = np.trapz(if_tpr, if_fpr)
+    # svm_auc = np.trapz(svm_tpr, svm_fpr)
+    # lof_auc = np.trapz(lof_tpr, lof_fpr)
+    # log.info(f'if auc: {if_auc}, svm auc: {svm_auc}, lof auc: {lof_auc}')
+
     TPRs, FPRs = [], []
     gs = list(np.arange(0.25, 2.25, 0.25))
     # gs = list(np.arange(0, 17, 2))
     log.info(f'gs: {gs}')
     for run_i, g in enumerate(gs):
         log.info(f'Running for generalisation: {g}')
-        if_roc, svm_roc, lof_roc = run(TPRs, FPRs, g, run_i)
+        if_roc, svm_roc, lof_roc = run(TPRs, FPRs, g, run_i, third_party_anomalies)
         log.info(TPRs)
         log.info(FPRs)
+        break
     plt.clf()
     s_FPR, s_TPR = zip(*list(sorted(list(zip(FPRs, TPRs)) + [(1, 1)] + [(0, 0)], key=lambda x: x[0])))
     AUC = np.trapz(s_TPR, s_FPR)
-    log.info(f'OLAPH AUC: {AUC}')
     plt.xlim(0, 1.1)
     plt.ylim(0, 1.1)
-    plt.plot(s_FPR, s_TPR, label='OLAPH')
+    plt.plot(s_FPR, s_TPR, label=f'OLAPH (auc = {AUC:.2f})')
     fpr, tpr, thresholds = if_roc
-    plt.plot(fpr, tpr, label='iForest')
+    AUC = np.trapz(tpr, fpr)
+    plt.plot(fpr, tpr, label=f'iForest (auc = {AUC:.2f})')
     fpr, tpr, thresholds = svm_roc
-    plt.plot(fpr, tpr, label='OC-SVM')
+    AUC = np.trapz(tpr, fpr)
+    plt.plot(fpr, tpr, label=f'OC-SVM (auc = {AUC:.2f})')
     fpr, tpr, thresholds = lof_roc
-    plt.plot(fpr, tpr, label='LOF')
+    AUC = np.trapz(tpr, fpr)
+    plt.plot(fpr, tpr, label=f'LOF (auc = {AUC:.2f})')
     # plt.xlim([0, 1])
     # plt.ylim([0, 1])
     plt.legend()
-    plt.title('AUC-ROC curve')
+    plt.title('AUC-ROC curve (online baselines)')
     plt.xlabel(f'FPR')
     plt.ylabel(f'TPR')
-    plt.savefig(f'/plots/test_roc-auc_new4.png')
+    plt.savefig(f'/plots/test_roc-auc_online.png')
+    plt.clf()
+
+    s_FPR, s_TPR = zip(*list(sorted(list(zip(FPRs, TPRs)) + [(1, 1)] + [(0, 0)], key=lambda x: x[0])))
+    AUC = np.trapz(s_TPR, s_FPR)
+    plt.xlim(0, 1.1)
+    plt.ylim(0, 1.1)
+    plt.plot(s_FPR, s_TPR, label=f'OLAPH (auc = {AUC:.2f})')
+    plt.plot(if_fpr, if_tpr, label=f'iForest (auc = {if_auc:.2f})')
+    plt.plot(svm_fpr, svm_tpr, label=f'OC-SVM (auc = {svm_auc:.2f})')
+    plt.plot(lof_fpr, lof_tpr, label=f'LOF (auc = {lof_auc:.2f})')
+    plt.legend()
+    plt.title('AUC-ROC curve (offline baselines)')
+    plt.xlabel(f'FPR')
+    plt.ylabel(f'TPR')
+    plt.savefig(f'/plots/test_roc-auc_offline.png')
