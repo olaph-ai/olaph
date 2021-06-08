@@ -10,7 +10,11 @@ paths:
 
 
 
-  data: lacework2/lacework/test-set.json
+  # data: lacework2/lacework/test-set.json
+  # data: lacework2/lacework/test-set-final.json
+  data: lacework2/lacework/test-distribution-s2.json
+  # data: lacework2/lacework/test-set3.json
+  # data: lacework2/lacework/test-set4.json
   # data: synth-heart13.log
 
 
@@ -100,15 +104,46 @@ settings:
 
 
 
-  max_attributes: 30
-  max_requests: 50
-  base_window_size: 10
-  generalisation: 1.6
-  decay: 0.7
-  calibrate_interval: 200
+  # max_attributes: 30
+  # max_requests: 50
+  # base_window_size: 10
+  # generalisation: 1.6
+  # decay: 0.7
+  # calibrate_interval: 200
 
+  # max_attributes: 30
+  # max_requests: 50
+  # base_window_size: 10
+  # generalisation: 1.6
+  # decay: 0.9
+  # calibrate_interval: 200
 
+  # max_attributes: 30
+  # max_requests: 50
+  # base_window_size: 10
+  # generalisation: 1.6
+  # decay: 0.7
+  # calibrate_interval: 200
 
+# __main__: INFO - [1.0, 1.0, 0.6, 0.0]
+# __main__: INFO - [0.9956545355784899, 0.7365562194459533, 0.40684410646387836, 0.041825095057034245]
+
+  # max_attributes: 35
+  # max_requests: 50
+  # base_window_size: 10
+  # generalisation: 1.6
+  # decay: 0.8
+  # calibrate_interval: 200
+
+# __main__: INFO - [1.0, 1.0, 0.6, 0.6, 0.2, 0.0, 0.0, 0.0]
+# __main__: INFO - [0.8120586637696904, 0.7479630635524172, 0.41988049972840846, 0.36882129277566544, 0.23302552960347633, 0.1510048886474742, 0.11895708853883757, 0.041825095057034245]
+
+  # max_attributes: 25
+  # max_requests: 
+  # base_window_size: 500
+  # generalisation: 1.6
+  # decay: 0.5
+  # calibrate_interval: 200
 
 
   # max_attributes: 30
@@ -117,3 +152,38 @@ settings:
   # generalisation: 1
   # decay: 0.7
   # calibrate_interval: 200
+
+  # max_attributes: 30
+  # max_requests: 500
+  # base_window_size: 50
+  # generalisation: 1.6
+  # decay: 0.9
+  # calibrate_interval: 200
+
+  # max_attributes: 30
+  # max_requests: 500
+  # base_window_size: 50
+  # generalisation: 1.6
+  # decay: 0.8
+  # calibrate_interval: 200
+
+  # max_attributes: 30
+  # max_requests: 120
+  # base_window_size: 40
+  # generalisation: 1.6
+  # decay: 0.8
+  # calibrate_interval: 200
+
+  # max_attributes: 30
+  # max_requests: 120
+  # base_window_size: 30
+  # generalisation: 1.6
+  # decay: 0.8
+  # calibrate_interval: 200
+
+  max_attributes: 30
+  max_requests: 400
+  base_window_size: 100
+  generalisation: 1.6
+  decay: 0.7
+  calibrate_interval: 200

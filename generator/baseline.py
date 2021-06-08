@@ -39,10 +39,10 @@ def num_baseline_anomalies(clf, window, trained_attrs, max_attributes, restructu
 
 def offline_baseline_roc_aucs(orig_data, labels, outliers_fraction, distance_metric, max_attributes, restructure):
     data = _process(orig_data, max_attributes, restructure)
-    iforest = IsolationForest()
-    iforest.fit(data)
-    svm = OneClassSVM()
-    svm.fit(data)
-    lof = LocalOutlierFactor(metric=distance_metric)
-    lof.fit(data)
-    return roc_curve(labels, iforest.score_samples(data)), roc_curve(labels, svm.score_samples(data)), roc_curve(labels, lof.negative_outlier_factor_)
+    iforest = IsolationForest(contamination=0.1)
+    iforest.fit(data[:1000])
+    svm = OneClassSVM(nu=0.1)
+    svm.fit(data[:1000])
+    lof = LocalOutlierFactor(metric=distance_metric, novelty=True, contamination=0.1)
+    lof.fit(data[:1000])
+    return roc_curve(labels, iforest.score_samples(data[1000:])), roc_curve(labels, svm.score_samples(data[1000:])), roc_curve(labels, lof.score_samples(data[1000:]))
