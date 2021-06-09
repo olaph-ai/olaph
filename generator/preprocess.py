@@ -117,7 +117,7 @@ def process_examples(requests, max_attributes, restructure):
     if restructure:
         processed = list(map(_restructure_request, requests))
     else:
-        processed = list(map(lambda r: (dict(), {(k[0].lower(),) + k[1:]: v for k, v in flatten(r).items() if k[1] != 'end_time' and k[1] != 'start_time' and 'CONTAINER_START_TIME' not in k and 'IMAGE_ID' not in k and 'IMAGE_PARENT_ID' not in k}), requests))
+        processed = list(map(lambda r: (dict(), {(k[0].lower(),) + k[1:]: v for k, v in flatten(r).items() if k[1] != 'end_time' and k[1] != 'start_time' and 'CONTAINER_START_TIME' not in k and 'IMAGE_ID' not in k and 'IMAGE_PARENT_ID' not in k and 'CONTAINER_TYPE' not in k and 'IMAGE_AUTHOR' not in k}), requests))
     return select_features(processed, max_attributes)
 
 def preprocess_data(requests, max_attributes, restructure):

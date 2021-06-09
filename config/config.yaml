@@ -12,10 +12,26 @@ paths:
 
   # data: lacework2/lacework/test-set.json
   # data: lacework2/lacework/test-set-final.json
-  data: lacework2/lacework/test-distribution-s2.json
-  # data: lacework2/lacework/test-set3.json
-  # data: lacework2/lacework/test-set4.json
+
+
+
+
+
+
+
+
+  data: lacework2/lacework/test-set4.json
+  # data: lacework2/lacework/test-distribution-s-small.json
+  # data: lacework2/lacework/test-distribution-s-large.json
+
+
+
+
   # data: synth-heart13.log
+
+  # data: lacework2/lacework/test-distribution-s3.json
+  # data: lacework2/lacework/test-distribution-s2.json
+  # data: lacework2/lacework/test-set3.json
 
 
 
@@ -181,9 +197,46 @@ settings:
   # decay: 0.8
   # calibrate_interval: 200
 
+  # max_attributes: 30
+  # max_requests: 120
+  # base_window_size: 10
+  # generalisation: 1.6
+  # decay: 0.9
+  # calibrate_interval: 200
+
+  # max_attributes: 30
+  # max_requests: 1000
+  # base_window_size: 50
+  # generalisation: 1.6
+  # decay: 0.9
+  # calibrate_interval: 200
+
+  # max_attributes: 30
+  # max_requests: 1000
+  # base_window_size: 30
+  # generalisation: 1.6
+  # decay: 0.7
+  # calibrate_interval: 200
+
+  # max_attributes: 30
+  # max_requests: 150
+  # base_window_size: 30
+  # generalisation: 1.6
+  # decay: 0.9
+  # calibrate_interval: 200
+
+  # max_attributes: 30
+  # max_requests: 500
+  # base_window_size: 50
+  # generalisation: 1.6
+  # decay: 0.9
+  # calibrate_interval: 200
+
   max_attributes: 30
-  max_requests: 400
-  base_window_size: 100
+  max_requests: 1000
+  base_window_size: 1000
   generalisation: 1.6
-  decay: 0.7
+  decay: 0.9
   calibrate_interval: 200
+
+

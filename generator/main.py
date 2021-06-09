@@ -32,7 +32,7 @@ def decay_examples(next_set, decay, drop_threshold, maxlen):
                            next_set)
                         ), maxlen=maxlen)
 
-def run(TPRs, FPRs, generalisation, run_i, third_party_anomalies):
+def run(all_requests, TPRs, FPRs, generalisation, run_i, third_party_anomalies):
     with open(os.getenv('CONFIG'), 'r') as f:
         config = yaml.safe_load(f)
     data = config['paths']['data']
@@ -58,21 +58,21 @@ def run(TPRs, FPRs, generalisation, run_i, third_party_anomalies):
     clear_dir('/tasks', 'trigger')
 
     data_path = f'{data_dir}/{data}'
-    if os.path.isdir(data_path):
-        all_requests = []
-        i = 0
-        data_type = config['paths']['data_type']
-        data_base = os.path.split(data_type)[1].split('.', 1)[0] + f'_dist2_g{str(generalisation).replace(".", "_")}'
-        for p in sorted(glob(f'{data_path}/**', recursive=True)):
-            if os.path.isfile(p) and os.path.basename(p) == data_type:
-                if 13 <= i <= 13:
-                    log.info(f'Loading requests from: {p}')
-                    requests = get_requests_from_logs(p, restructure)
-                    all_requests.extend(requests)
-                i += 1
-    else:
-        data_base = os.path.split(data)[1].split('.', 1)[0] + f'_dist2_g{str(generalisation).replace(".", "_")}'
-        all_requests = get_requests_from_logs(data_path, restructure)
+    # if os.path.isdir(data_path):
+    #     all_requests = []
+    #     i = 0
+    #     data_type = config['paths']['data_type']
+    #     data_base = os.path.split(data_type)[1].split('.', 1)[0] + f'_dfark3_g{str(generalisation).replace(".", "_")}'
+    #     for p in sorted(glob(f'{data_path}/**', recursive=True)):
+    #         if os.path.isfile(p) and os.path.basename(p) == data_type:
+    #             if 13 <= i <= 13:
+    #                 log.info(f'Loading requests from: {p}')
+    #                 requests = get_requests_from_logs(p, restructure)
+    #                 all_requests.extend(requests)
+    #             i += 1
+    # else:
+    data_base = os.path.split(data)[1].split('.', 1)[0] + f'_dfark3_g{str(generalisation).replace(".", "_")}'
+    # all_requests = get_requests_from_logs(data_path, restructure)
         # all_requests = all_requests[(len(all_requests) // 2) + 7300:][:1000]
 
     with open('/tasks/reqs.tmp', 'w') as f:
@@ -218,8 +218,8 @@ def run(TPRs, FPRs, generalisation, run_i, third_party_anomalies):
             relearn_schedule_ws.append((w_i, avg_distance))
             with open(f'/tasks/trigger{w_i}-low.json', 'w') as f:
                 f.write(json.dumps(list(zip(*list(reduce(lambda a, b: a + b, next_set))))[0], indent=4))
-        elif (relearn_high and avg_distance <= np.mean(curr_avg_distances)
-              or relearn_low and avg_distance >= np.mean(curr_avg_distances)) or calibrate:
+        elif (relearn_high and avg_distance <= high_thresh
+              or relearn_low and avg_distance >= low_thresh) or calibrate:
         # if relearn_high or relearn_low:
             next_requests, next_distances, permanents = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
             outliers_fraction = max(min(permanents.count(False)/len(permanents), 0.5), 0.1)
@@ -239,10 +239,10 @@ def run(TPRs, FPRs, generalisation, run_i, third_party_anomalies):
             curr_policy_path, curr_policy_time, curr_package = new_policy_path, new_policy_time, new_package
             learned_requests = next_requests
             last_relearn = len(avg_distances)
-            if not calibrate and not relearn_low:
-                next_set.append(deepcopy([(r, d, True) for (r, d, _) in sorted(list(filter(lambda r: not r[2], reduce(lambda a, b: a + b, next_set))), key=lambda p: p[1], reverse=True)[:window_size]]))
-            # if not calibrate:
-            #     next_set.append(deepcopy([(r, d, True) for (r, d, _) in sorted(list(filter(lambda r: not r[2], reduce(lambda a, b: a + b, next_set))), key=lambda p: p[1], reverse=relearn_high)[:window_size]]))
+            # if not calibrate and not relearn_low:
+            #     next_set.append(deepcopy([(r, d, True) for (r, d, _) in sorted(list(filter(lambda r: not r[2], reduce(lambda a, b: a + b, next_set))), key=lambda p: p[1], reverse=True)[:window_size]]))
+            if not calibrate:
+                next_set.append(deepcopy([(r, d, True) for (r, d, _) in sorted(list(filter(lambda r: not r[2], reduce(lambda a, b: a + b, next_set))), key=lambda p: p[1], reverse=relearn_high)[:window_size]]))
             relearn_high, relearn_low = False, False
             p_i += 1
             c_i = 0
@@ -374,21 +374,26 @@ def run(TPRs, FPRs, generalisation, run_i, third_party_anomalies):
     # plt.savefig(f'{plots_dir}/{name}-agrees.png')
     with open(f'{plots_dir}/{name}-agreeds.json', 'w') as f:
         f.write(json.dumps(agreeds, indent=4))
-    return roc_curve(b_trues, b_scores[0]), roc_curve(b_trues, b_scores[1]), roc_curve(b_trues, b_scores[2])
+    return roc_curve(b_trues, b_scores[0], pos_label=-1), roc_curve(b_trues, b_scores[1], pos_label=-1), roc_curve(b_trues, b_scores[2], pos_label=-1)
 
 
 if __name__ == '__main__':
-    third_party_anomalies = [133] + [914] + [1202] + [1670] + [1747]
-    third_party_anomalies = [tpa + 1000 for tpa in third_party_anomalies]
     with open(os.getenv('CONFIG'), 'r') as f:
         config = yaml.safe_load(f)
     data = config['paths']['data']
     data_dir = config['paths']['data_dir']
+    max_attributes = config['settings']['max_attributes']
     data_path = f'{data_dir}/{data}'
     restructure = False
     all_requests = get_requests_from_logs(data_path, restructure)
+    all_requests = all_requests[2000:3000] + all_requests[10000:]
+
+
+    third_party_anomalies = [133] + [914] + [1202] + [1670] + [1747]
+    third_party_anomalies = [tpa + 1000 for tpa in third_party_anomalies]
+
     labels = [-1 if i in third_party_anomalies else 1 for i, _ in enumerate(all_requests)][1000:]
-    if_rc, svm_rc, lof_rc = offline_baseline_roc_aucs(all_requests, labels, 0.5, 'cityblock', 30, restructure)
+    if_rc, svm_rc, lof_rc = offline_baseline_roc_aucs(deepcopy(all_requests), labels, 0.1, 'cityblock', max_attributes, restructure)
     if_fpr, if_tpr, _ = if_rc
     svm_fpr, svm_tpr, _ = svm_rc
     lof_fpr, lof_tpr, _ = lof_rc
@@ -399,7 +404,12 @@ if __name__ == '__main__':
 
     TPRs, FPRs = [], []
     # gs = list(np.arange(0.25, 1.75, 0.25))
-    gs = list(np.arange(0.25, 1.15, 0.15))
+    # gs = list(np.arange(0.25, 1.15, 0.15))
+
+
+    gs = list(np.arange(0.25, 2.5, 0.5))
+    # gs = list(np.arange(1.75, 2, 0.5))
+
     # gs = list(np.arange(0.25, 2.25, 0.25))
     # gs = list(np.arange(0.25, 10.3, 2))
     # gs = [0.25, 2.0, 2.5, 2.75, 3]
@@ -408,7 +418,7 @@ if __name__ == '__main__':
     log.info(f'gs: {gs}')
     for run_i, g in enumerate(gs):
         log.info(f'Running for generalisation: {g}')
-        if_roc, svm_roc, lof_roc = run(TPRs, FPRs, g, run_i, third_party_anomalies)
+        if_roc, svm_roc, lof_roc = run(all_requests, TPRs, FPRs, g, run_i, third_party_anomalies)
         log.info(TPRs)
         log.info(FPRs)
     plt.clf()
@@ -429,10 +439,10 @@ if __name__ == '__main__':
     # plt.xlim([0, 1])
     # plt.ylim([0, 1])
     plt.legend()
-    plt.title('AUC-ROC curve (online baselines)')
+    plt.title('AUC-ROC curve')
     plt.xlabel(f'FPR')
     plt.ylabel(f'TPR')
-    plt.savefig(f'/plots/test_roc-auc_online-dist2.png')
+    plt.savefig(f'/plots/test_roc-auc_online-dfar-k3.png')
     plt.clf()
 
     s_FPR, s_TPR = zip(*list(sorted(list(zip(FPRs, TPRs)) + [(1, 1)] + [(0, 0)], key=lambda x: x[0])))
@@ -444,7 +454,7 @@ if __name__ == '__main__':
     plt.plot(svm_fpr, svm_tpr, label=f'OC-SVM (auc = {svm_auc:.2f})')
     plt.plot(lof_fpr, lof_tpr, label=f'LOF (auc = {lof_auc:.2f})')
     plt.legend()
-    plt.title('AUC-ROC curve (offline baselines)')
+    plt.title('AUC-ROC curve')
     plt.xlabel(f'FPR')
     plt.ylabel(f'TPR')
-    plt.savefig(f'/plots/test_roc-auc_offline-dist2.png')
+    plt.savefig(f'/plots/test_roc-auc_offline-dfar-k3.png')
