@@ -61,7 +61,8 @@ def _get_logs(path, restructure):
             try:
                 logg = json.loads(l)
                 logs.append(logg)
-            except:
+            except Exception as e:
+                log.error(e)
                 if l.replace('\n', ''):
                     print(f'error at {i}:\n{l}')
     return logs

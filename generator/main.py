@@ -62,7 +62,7 @@ def run(all_requests, TPRs, FPRs, generalisation, run_i, third_party_anomalies):
     #     all_requests = []
     #     i = 0
     #     data_type = config['paths']['data_type']
-    #     data_base = os.path.split(data_type)[1].split('.', 1)[0] + f'_dfark3_g{str(generalisation).replace(".", "_")}'
+    #     data_base = os.path.split(data_type)[1].split('.', 1)[0] + f'_dtestk3_g{str(generalisation).replace(".", "_")}'
     #     for p in sorted(glob(f'{data_path}/**', recursive=True)):
     #         if os.path.isfile(p) and os.path.basename(p) == data_type:
     #             if 13 <= i <= 13:
@@ -71,7 +71,7 @@ def run(all_requests, TPRs, FPRs, generalisation, run_i, third_party_anomalies):
     #                 all_requests.extend(requests)
     #             i += 1
     # else:
-    data_base = os.path.split(data)[1].split('.', 1)[0] + f'_dfark3_g{str(generalisation).replace(".", "_")}'
+    data_base = os.path.split(data)[1].split('.', 1)[0] + f'_dtestk3_g{str(generalisation).replace(".", "_")}'
     # all_requests = get_requests_from_logs(data_path, restructure)
         # all_requests = all_requests[(len(all_requests) // 2) + 7300:][:1000]
 
@@ -386,28 +386,29 @@ if __name__ == '__main__':
     data_path = f'{data_dir}/{data}'
     restructure = False
     all_requests = get_requests_from_logs(data_path, restructure)
-    all_requests = all_requests[2000:3000] + all_requests[10000:]
+    # all_requests = all_requests[2000:3000] + all_requests[10000:]
 
 
     third_party_anomalies = [133] + [914] + [1202] + [1670] + [1747]
     third_party_anomalies = [tpa + 1000 for tpa in third_party_anomalies]
 
-    labels = [-1 if i in third_party_anomalies else 1 for i, _ in enumerate(all_requests)][1000:]
-    if_rc, svm_rc, lof_rc = offline_baseline_roc_aucs(deepcopy(all_requests), labels, 0.1, 'cityblock', max_attributes, restructure)
-    if_fpr, if_tpr, _ = if_rc
-    svm_fpr, svm_tpr, _ = svm_rc
-    lof_fpr, lof_tpr, _ = lof_rc
-    if_auc = np.trapz(if_tpr, if_fpr)
-    svm_auc = np.trapz(svm_tpr, svm_fpr)
-    lof_auc = np.trapz(lof_tpr, lof_fpr)
-    log.info(f'if auc: {if_auc}, svm auc: {svm_auc}, lof auc: {lof_auc}')
+    # labels = [-1 if i in third_party_anomalies else 1 for i, _ in enumerate(all_requests)][1000:]
+    # if_rc, svm_rc, lof_rc = offline_baseline_roc_aucs(deepcopy(all_requests), labels, 0.1, 'cityblock', max_attributes, restructure)
+    # if_fpr, if_tpr, _ = if_rc
+    # svm_fpr, svm_tpr, _ = svm_rc
+    # lof_fpr, lof_tpr, _ = lof_rc
+    # if_auc = np.trapz(if_tpr, if_fpr)
+    # svm_auc = np.trapz(svm_tpr, svm_fpr)
+    # lof_auc = np.trapz(lof_tpr, lof_fpr)
+    # log.info(f'if auc: {if_auc}, svm auc: {svm_auc}, lof auc: {lof_auc}')
 
     TPRs, FPRs = [], []
     # gs = list(np.arange(0.25, 1.75, 0.25))
     # gs = list(np.arange(0.25, 1.15, 0.15))
 
 
-    gs = list(np.arange(0.25, 2.5, 0.5))
+    # gs = list(np.arange(0.25, 2.5, 0.5))
+    gs = [5]
     # gs = list(np.arange(1.75, 2, 0.5))
 
     # gs = list(np.arange(0.25, 2.25, 0.25))
@@ -442,7 +443,7 @@ if __name__ == '__main__':
     plt.title('AUC-ROC curve')
     plt.xlabel(f'FPR')
     plt.ylabel(f'TPR')
-    plt.savefig(f'/plots/test_roc-auc_online-dfar-k3.png')
+    plt.savefig(f'/plots/test_roc-auc_online-dtest-k3.png')
     plt.clf()
 
     s_FPR, s_TPR = zip(*list(sorted(list(zip(FPRs, TPRs)) + [(1, 1)] + [(0, 0)], key=lambda x: x[0])))
@@ -457,4 +458,4 @@ if __name__ == '__main__':
     plt.title('AUC-ROC curve')
     plt.xlabel(f'FPR')
     plt.ylabel(f'TPR')
-    plt.savefig(f'/plots/test_roc-auc_offline-dfar-k3.png')
+    plt.savefig(f'/plots/test_roc-auc_offline-dtest-k3.png')

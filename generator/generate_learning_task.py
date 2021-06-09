@@ -70,13 +70,16 @@ def generate_mode_bias(atoms, generalisation, variables_in_bias, examples_in_bia
 
 % Prefer rules with the maximum number of body literals in the examples
 % Add 1 to encourage learning fewer rules
-#bias("penalty((N - {avg_min_max_body_literals})**8 + 1, rule) :- N = #count{{X: in_body(X)}}.").
+#bias("penalty((N - {avg_min_max_body_literals})**2 + 1, rule) :- N = #count{{X: in_body(X)}}.").
 
 % Prefer rules that cover fewer examples
 #bias("n(U) :- user(U), not user(U, BodyLit), in_body(BodyLit).").
 #bias("penalty(1, U) :- user(U), not n(U).").
 % #bias("penalty(1, body(X)) :- in_body(X), not required(X).").
 % #bias('required(X) :- in_body(X), X = input(A, B, C), A = "props_container", B = "IMAGE_REPO".').
+% #bias('required(X) :- in_body(X), X = input(A, B, C, D, E), A = "attributes", B = "request", C = "http", D = "method".').
+% #bias('required(X) :- in_body(X), X = input(A, B, C, D, E), A = "attributes", B = "request", C = "http", D = "protocol".').
+% #bias('required(X) :- in_body(X), X = input(A, B, C, D, E, F), A = "attributes", B = "destination", C = "address", D = "socketAddress", E = "portValue".').
 ''')
     return '\n'.join(mode_bias), body_lits_cost
 

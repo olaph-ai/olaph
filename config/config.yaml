@@ -20,7 +20,8 @@ paths:
 
 
 
-  data: lacework2/lacework/test-set4.json
+  # data: lacework2/lacework/test-set4.json
+  data: flexibility.json
   # data: lacework2/lacework/test-distribution-s-small.json
   # data: lacework2/lacework/test-distribution-s-large.json
 
