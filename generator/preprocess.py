@@ -29,6 +29,9 @@ def _restructure_request(request):
     request['input'].pop('truncated_body')
     request['input'].pop('version')
     request['input']['attributes']['request']['http'].pop('headers')  # New
+    # request['input']['attributes']['destination'].pop('principal', None)
+    # request['input']['attributes']['source'].pop('principal', None)
+    # request['input']['attributes']['source']['address']['socketAddress'].pop('portValue')
     # Shortcuts for Rego imports
     request['source'] = request['input']['attributes']['source']['address'].pop('socketAddress')
     request['destination'] = request['input']['attributes']['destination']['address'].pop('socketAddress')

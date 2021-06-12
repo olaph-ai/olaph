@@ -233,11 +233,34 @@ settings:
   # decay: 0.9
   # calibrate_interval: 200
 
+  # max_attributes: 30
+  # max_requests: 1000
+  # base_window_size: 1000
+  # generalisation: 1.6
+  # decay: 0.9
+  # calibrate_interval: 200
+
+
+
   max_attributes: 30
-  max_requests: 1000
-  base_window_size: 1000
-  generalisation: 1.6
+  max_buffer: 100
+  base_window_size: 1
+  g: 2
+  k: 2
+  c: 1
   decay: 0.9
-  calibrate_interval: 200
+  required_attributes:
+    - "request__method(M)"
+    - "request__body(B)"
+    - "parsed_path(I, P)"
+  always_allow: |
+
+  always_deny: |
 
 
+
+
+#   % #bias('required(X) :- in_body(X), X = input(A, B, C), A = "props_container", B = "IMAGE_REPO".').
+# % #bias('required(X) :- in_body(X), X = input(A, B, C, D, E), A = "attributes", B = "request", C = "http", D = "method".').
+# % #bias('required(X) :- in_body(X), X = input(A, B, C, D, E), A = "attributes", B = "request", C = "http", D = "protocol".').
+# % #bias('required(X) :- in_body(X), X = input(A, B, C, D, E, F), A = "attributes", B = "destination", C = "address", D = "socketAddress", E = "portValue".').

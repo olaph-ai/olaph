@@ -3,9 +3,10 @@ from generate_learning_task import generate_learning_task
 from run_learning_task import run_task
 from generate_rego_policy import generate_rego_policy
 
-def generate_policy(requests, distances, max_attributes, generalisation, name,
+def generate_policy(requests, distances, max_attributes, g, k, c, required_attrs, name,
                     tasks_dir, models_dir, policies_dir, data_base, restructure):
-    task, body_cost = generate_learning_task(requests, distances, max_attributes, generalisation, restructure)
+    task, body_cost = generate_learning_task(requests, distances, max_attributes, g, k, c, required_attrs,
+                                             restructure)
     task_path = f'{tasks_dir}/{name}.las'
     with open(task_path, 'w') as f:
         f.write(task)

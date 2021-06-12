@@ -3,7 +3,7 @@ from re import split, sub
 def generate_rego_policy(model, data_base, restructure):
     not_in_quotes = '(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)'
     package = data_base.replace('-', '_')
-    preamble = f"""package {package}""" + ("""
+    preamble = f"""package istio.authz""" + ("""
 import input.attributes.source.address.socketAddress as source
 import input.attributes.destination.address.socketAddress as destination
 import input.attributes.request.http as request

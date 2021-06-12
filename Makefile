@@ -1,5 +1,7 @@
 all: build generate
 
+monitor: build mon
+
 build:
 			docker build -q -t drozza/policy-generator:latest .
 
@@ -39,8 +41,8 @@ bash:
 eval:
 			opa eval -i ../data/single/synth-heart11-single.json -d ../policies/synth-heart11_1.rego "data.synth_heart11.allow"
 
-monitor:
-	    docker run -v $(shell pwd)/../tasks:/tasks -v $(shell pwd)/../models:/models \
+mon:
+	    docker run -it -v $(shell pwd)/../tasks:/tasks -v $(shell pwd)/../models:/models \
 								 -v $(shell pwd)/../policies:/policies -v $(shell pwd)/../data:/data \
 								 -v $(shell pwd)/../diffs:/diffs -v $(shell pwd)/../plots:/plots \
                  -v $(shell pwd)/config:/config -e CONFIG=/config/config.yaml \

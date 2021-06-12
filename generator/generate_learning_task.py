@@ -42,7 +42,7 @@ def examples_to_bias(examples):
     return '\n'.join([f"#bias('user(eg(id{i})).').\n{_example_to_bias(i, atoms)}"
                       for i, atoms in enumerate(examples)])
 
-def generate_mode_bias(atoms, generalisation, variables_in_bias, examples_in_bias):
+def generate_mode_bias(atoms, g, k_param, c, required_attrs, variables_in_bias, examples_in_bias):
     mode_bias = []
     for k, terms in reduce(lambda a, b: a + b, atoms):
         combs = [['const'] * len(terms)]
@@ -59,35 +59,35 @@ def generate_mode_bias(atoms, generalisation, variables_in_bias, examples_in_bia
                 mode_bias.append(mb)
     max_body = max(map(len, atoms))
     min_body = min(map(len, atoms))
-    avg_min_max_body_literals = int((0.5 * (max_body + min_body)) // (generalisation + 1))
+    normalised = int(0.5 * (max_body + min_body))
+    avg_min_max_body_literals = min(int(g), normalised)
     if examples_in_bias:
         mode_bias.append(examples_to_bias(atoms))
-    body_lits_cost = lambda n: ((n - avg_min_max_body_literals)**8 + 1, len(atoms))
+    body_lits_cost = lambda n: (abs((n - avg_min_max_body_literals)**k_param) + c, len(atoms))
     if variables_in_bias:
         mode_bias.append('\n#maxv(1).')
+    if required_attrs:
+        required_atoms = '#bias("penalty(1, body(X)) :- in_body(X), not required(X).").\n'
+        required_atoms += '\n'.join([f"#bias('required(X) :- in_body(X), X = {ra}.')." for ra in required_attrs])
+    else:
+        required_atoms = ''
     mode_bias.append(f'''
 #modeh(allow).
 
-% Prefer rules with the maximum number of body literals in the examples
-% Add 1 to encourage learning fewer rules
-#bias("penalty((N - {avg_min_max_body_literals})**2 + 1, rule) :- N = #count{{X: in_body(X)}}.").
+#bias("penalty(|(N - {avg_min_max_body_literals})**{k_param}| + {c}, rule) :- N = #count{{X: in_body(X)}}.").
 
 % Prefer rules that cover fewer examples
 #bias("n(U) :- user(U), not user(U, BodyLit), in_body(BodyLit).").
 #bias("penalty(1, U) :- user(U), not n(U).").
-% #bias("penalty(1, body(X)) :- in_body(X), not required(X).").
-% #bias('required(X) :- in_body(X), X = input(A, B, C), A = "props_container", B = "IMAGE_REPO".').
-% #bias('required(X) :- in_body(X), X = input(A, B, C, D, E), A = "attributes", B = "request", C = "http", D = "method".').
-% #bias('required(X) :- in_body(X), X = input(A, B, C, D, E), A = "attributes", B = "request", C = "http", D = "protocol".').
-% #bias('required(X) :- in_body(X), X = input(A, B, C, D, E, F), A = "attributes", B = "destination", C = "address", D = "socketAddress", E = "portValue".').
+{required_atoms}
 ''')
     return '\n'.join(mode_bias), body_lits_cost
 
 
-def generate_learning_task(requests, distances, max_attributes, generalisation, restructure):
+def generate_learning_task(requests, distances, max_attributes, g, k, c, required_attrs, restructure):
     example_atoms = preprocess_data(requests, max_attributes, restructure)
     las_examples = examples_to_las(example_atoms, distances)
-    las_mode_bias, body_cost = generate_mode_bias(example_atoms, generalisation,
+    las_mode_bias, body_cost = generate_mode_bias(example_atoms, g, k, c, required_attrs,
                                                   variables_in_bias=False, examples_in_bias=True)
     task = las_examples + '\n\n' + las_mode_bias
     return task, body_cost
