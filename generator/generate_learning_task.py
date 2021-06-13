@@ -57,10 +57,13 @@ def generate_mode_bias(atoms, g, k_param, c, required_attrs, variables_in_bias, 
             mb = f'#constant({k}, {term}).'
             if mb not in mode_bias:
                 mode_bias.append(mb)
+    # max_body = max(map(len, atoms))
+    # min_body = min(map(len, atoms))
+    # normalised = int(0.5 * (max_body + min_body))
+    # avg_min_max_body_literals = min(int(g), normalised)
     max_body = max(map(len, atoms))
     min_body = min(map(len, atoms))
-    normalised = int(0.5 * (max_body + min_body))
-    avg_min_max_body_literals = min(int(g), normalised)
+    avg_min_max_body_literals = int((0.5 * (max_body + min_body)) // (g + 1))
     if examples_in_bias:
         mode_bias.append(examples_to_bias(atoms))
     body_lits_cost = lambda n: (abs((n - avg_min_max_body_literals)**k_param) + c, len(atoms))

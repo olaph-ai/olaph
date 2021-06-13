@@ -3,14 +3,18 @@ from re import split, sub
 def generate_rego_policy(model, data_base, restructure):
     not_in_quotes = '(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)'
     package = data_base.replace('-', '_')
-    preamble = f"""package istio.authz""" + ("""
-import input.attributes.source.address.socketAddress as source
-import input.attributes.destination.address.socketAddress as destination
+#     imports = ("""
+# import input.attributes.source.address.socketAddress as source
+# import input.attributes.destination.address.socketAddress as destination
+# import input.attributes.request.http as request
+# import input.attributes.request.http.headers
+# import input.parsed_body
+# import input.parsed_path
+# import input.parsed_query""" if restructure else '')
+    imports = """
 import input.attributes.request.http as request
-import input.attributes.request.http.headers
-import input.parsed_body
-import input.parsed_path
-import input.parsed_query""" if restructure else '') + f"""
+import input.parsed_path"""
+    preamble = f"""package istio.authz""" + imports + f"""
 
 # frequency: 0
 default allow = false

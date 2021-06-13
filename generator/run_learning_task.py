@@ -23,6 +23,7 @@ def get_penalties(model, prev, not_in_quotes):
 
 def get_confidences(rule_penalties, body_cost, not_in_quotes):
     rule_confidences = []
+    total_p = sum([p - body_cost(len(split(rf', {not_in_quotes}', split(rf' :- {not_in_quotes}', rule)[1][:-1])))[0] for rule, p in rule_penalties])
     for rule, p in rule_penalties:
         rule_s = split(rf' :- {not_in_quotes}', rule)
         if len(rule_s) > 1:
@@ -33,5 +34,6 @@ def get_confidences(rule_penalties, body_cost, not_in_quotes):
         num_body_atoms = len(split(rf', {not_in_quotes}', body[:-1]))
         bc, num_examples = body_cost(num_body_atoms)
         covered_examples = p - bc
-        rule_confidences.append((rule, covered_examples / num_examples))
+        # rule_confidences.append((rule, covered_examples / num_examples))
+        rule_confidences.append((rule, covered_examples / total_p))
     return rule_confidences

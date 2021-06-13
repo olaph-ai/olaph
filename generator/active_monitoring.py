@@ -48,7 +48,6 @@ data:
                           stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     log.info(sp.stdout.read().decode() + sp.stderr.read().decode())
 
-
 def run(deploy_name):
     with open(os.getenv('CONFIG'), 'r') as f:
         config = yaml.safe_load(f)
@@ -66,11 +65,12 @@ def run(deploy_name):
 
     max_attributes = int(config['settings']['max_attributes'])
     max_buffer = int(config['settings']['max_buffer'])
-    base_window_size = int(config['settings']['base_window_size'])
+    maxlen = max_buffer
+    window_size = int(config['settings']['window_size'])
     g = max(int(config['settings']['g']), 0)
     k = max(int(config['settings']['k']), 1)
     c = max(int(config['settings']['c']), 0)
-    required_attrs = list(config['settings']['required_attributes'])
+    preferred_attrs = list(config['settings']['preferred_attributes'])
     allowlist = str(config['settings']['always_allow'])
     decay = float(config['settings']['decay'])
     differ = dl.HtmlDiff(wrapcolumn=80)
@@ -78,8 +78,6 @@ def run(deploy_name):
     clear_dir('/tasks', 'trigger')
 
     differ = dl.HtmlDiff(wrapcolumn=80)
-    window_size = base_window_size
-    maxlen = max_buffer
     next_set = deque(maxlen=maxlen)
     avg_distances = []
     relearn_windows = []
@@ -89,7 +87,7 @@ def run(deploy_name):
     thresholds = []
     window = []
     w_i = 0
-    lf = subprocess.Popen(f'kubectl logs --tail {base_window_size} -f deploy/{deploy_name} opa-istio', shell=True,
+    lf = subprocess.Popen(f'kubectl logs --tail {window_size} -f deploy/{deploy_name} opa-istio', shell=True,
                          stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     while len(window) < window_size:
         line = lf.stdout.readline().decode().strip()
@@ -97,7 +95,7 @@ def run(deploy_name):
             llog = json.loads(line)
         except:
             del lf
-            lf = subprocess.Popen(f'kubectl logs --tail {base_window_size} -f deploy/{deploy_name} opa-istio', shell=True, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            lf = subprocess.Popen(f'kubectl logs --tail {window_size} -f deploy/{deploy_name} opa-istio', shell=True, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             continue
         if llog['msg'] == 'Decision Log':
             window.append({'input': llog['input']})
@@ -106,18 +104,17 @@ def run(deploy_name):
     next_set.append(list(zip(window, distances, permanents)))
     learned_requests, learned_distances, _ = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
     log.info('Learning first policy')
-    allowed = [{'input': json.loads(al)['input']} for al in allowlist.split('\n')]
+    allowed = [{'input': json.loads(al)['input']} for al in allowlist.split('\n')] if allowlist else []
     for al in allowed:
         if al not in learned_requests:
             learned_requests.append(al), learned_distances.append(0), permanents.append(True)
     curr_policy_path, curr_policy_time, curr_package = generate_policy(
         deepcopy(learned_requests), learned_distances, max_attributes,
-        g, k, c, required_attrs, f'{deploy_name}_1', tasks_dir, models_dir, policies_dir, deploy_name, restructure
+        g, k, c, preferred_attrs, f'{deploy_name}_1', tasks_dir, models_dir, policies_dir, deploy_name, restructure
     )
     next_set.append(deepcopy([(r, d, True) for (r, d, _) in sorted(list(filter(lambda r: not r[2], reduce(lambda a, b: a + b, next_set))), key=lambda p: p[1], reverse=True)[:window_size]]))
     enforce = input('Approve policy 1 for enforcement? y/n: ') == 'y'
     if enforce:
-        log.info('enforcing')
         enforce_policy(curr_policy_path, deploy_name)
     p_i, total_r = 2, len(window)
     w_i, c_i = 2, 2
@@ -132,79 +129,116 @@ def run(deploy_name):
     tp, tn, fp, fn = 0, 0, 0, 0
     b_trues, b_scores = [], [[], [], []]
     window.clear()
-    while True:
-        line = lf.stdout.readline().decode().strip()
-        try:
-            llog = json.loads(line)
-        except:
-            del lf
-            lf = subprocess.Popen(f'kubectl logs --tail {base_window_size} -f deploy/{deploy_name} opa-istio', shell=True, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-            continue
-        if llog['msg'] == 'Decision Log':
-            window.append({'input': llog['input']})
-        if len(window) == window_size:
-            distances = compute_distances(deepcopy(window), deepcopy(learned_requests),
-                                          distance_measure, max_attributes, restructure)
-            next_set = decay_examples(next_set, decay, low_thresh, maxlen)
-            next_window = list(zip(window, distances, [False] * len(window)))
-            next_set.append(next_window)
-            total_r += len(window)
-            hd_distances = list(map(lambda w: max(list(zip(*w))[1]), next_set))
-            avg_distance = np.mean(hd_distances)
-            avg_distances.append((w_i, avg_distance))
-            curr_avg_distances = list(zip(*avg_distances[last_relearn if last_relearn != 0 else max(0,w_i-10):]))[1]
-            mean_avg_d = np.mean(curr_avg_distances)
-            std_avg_d = np.std(curr_avg_distances)
-            high_thresh = mean_avg_d + 2 * std_avg_d
-            low_thresh = max(mean_avg_d - 2 * std_avg_d, 0)
-            thresholds.append((w_i, high_thresh, low_thresh))
-            if len(curr_avg_distances) > 1:
-                volatilities.append((w_i, std_avg_d))
-            log.info(
-                f'{deploy_name:<20}: Window {w_i:3d} - w_size: {window_size}, '
-                f'Avg max distance: {avg_distance:.4f}, '
-                f'learned_size: {len(learned_requests)}, next_size: {sum(map(len, next_set)):4d} ({len(next_set)})'
-                f', high thresh: {high_thresh:.4f}, low thresh: {low_thresh:.4f}')
-            if avg_distance > high_thresh and not relearn_high and not relearn_low:
-                log.info(f'Schedule relearn of policy, as {avg_distance:.4f} > {high_thresh:.4f}')
-                relearn_high = True
-                relearn_schedule_ws.append((w_i, avg_distance))
-            elif avg_distance < low_thresh and not relearn_low and not relearn_high:
-                log.info(f'Schedule relearn of policy, as {avg_distance:.4f} < {low_thresh:.4f}')
-                relearn_low = True
-                relearn_schedule_ws.append((w_i, avg_distance))
-            elif (relearn_high and avg_distance <= high_thresh
-                  or relearn_low and avg_distance >= low_thresh):
-                next_requests, next_distances, permanents = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
-                allowed = [{'input': json.loads(al)['input']} for al in allowlist.split('\n')]
-                for al in allowed:
-                    if al not in next_requests:
-                        next_requests.append(al), next_distances.append(0), permanents.append(True)
-                outliers_fraction = max(min(permanents.count(False)/len(permanents), 0.5), 0.1)
-                strr = "high" if relearn_high else "low" if relearn_low else "calibrate"
-                log.info(f'Relearn {strr}, outliers frac: {outliers_fraction}')
-                new_policy_path, new_policy_time, new_package = generate_policy(
-                    deepcopy(next_requests), next_distances, max_attributes, g, k, c, required_attrs,
-                    f'{deploy_name}_{p_i}', tasks_dir, models_dir, policies_dir, deploy_name, restructure
-                )
-                generate_policy_diff(new_policy_path, new_policy_time, curr_policy_path, curr_policy_time, p_i,
-                                     differ, f'{deploy_name}_{p_i-1}-{p_i}', policies_dir, diffs_dir)
-                relearn_windows.append((w_i, avg_distance))
-                with open(curr_policy_path, 'r') as f1:
-                    with open(new_policy_path, 'r') as f2:
-                        if f1.read() != f2.read():
-                            enforce = input(f'Approve policy {p_i} for enforcement? y/n: ') == 'y'
-                            if enforce:
-                                log.info('enforcing')
-                                enforce_policy(new_policy_path, deploy_name)
-                curr_policy_path, curr_policy_time, curr_package = new_policy_path, new_policy_time, new_package
-                learned_requests = next_requests
-                last_relearn = len(avg_distances)
-                next_set.append(deepcopy([(r, d, True) for (r, d, _) in sorted(list(filter(lambda r: not r[2], reduce(lambda a, b: a + b, next_set))), key=lambda p: p[1], reverse=relearn_high)[:window_size]]))
-                relearn_high, relearn_low = False, False
-                p_i += 1
-            w_i += 1
-            window.clear()
+    try:
+        while True:
+            line = lf.stdout.readline().decode().strip()
+            try:
+                llog = json.loads(line)
+            except:
+                del lf
+                lf = subprocess.Popen(f'kubectl logs --tail {window_size} -f deploy/{deploy_name} opa-istio', shell=True, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                continue
+            if llog['msg'] == 'Decision Log':
+                window.append({'input': llog['input']})
+            if len(window) == window_size:
+                distances = compute_distances(deepcopy(window), deepcopy(learned_requests),
+                                              distance_measure, max_attributes, restructure)
+                next_set = decay_examples(next_set, decay, low_thresh, maxlen)
+                next_window = list(zip(window, distances, [False] * len(window)))
+                next_set.append(next_window)
+                total_r += len(window)
+                hd_distances = list(map(lambda w: max(list(zip(*w))[1]), next_set))
+                avg_distance = np.mean(hd_distances)
+                avg_distances.append((w_i, avg_distance))
+                curr_avg_distances = list(zip(*avg_distances[last_relearn if last_relearn != 0 else max(0,w_i-10):]))[1]
+                mean_avg_d = np.mean(curr_avg_distances)
+                std_avg_d = np.std(curr_avg_distances)
+                high_thresh = mean_avg_d + 2 * std_avg_d
+                low_thresh = max(mean_avg_d - 2 * std_avg_d, 0)
+                thresholds.append((w_i, high_thresh, low_thresh))
+                if len(curr_avg_distances) > 1:
+                    volatilities.append((w_i, std_avg_d))
+                log.info(
+                    f'{deploy_name:<20}: Window {w_i:3d} - w_size: {window_size}, '
+                    f'Avg max distance: {avg_distance:.4f}, '
+                    f'learned_size: {len(learned_requests)}, next_size: {sum(map(len, next_set)):4d} ({len(next_set)})'
+                    f', high thresh: {high_thresh:.4f}, low thresh: {low_thresh:.4f}')
+                if avg_distance > high_thresh and not relearn_high and not relearn_low:
+                    log.info(f'Schedule relearn of policy, as {avg_distance:.4f} > {high_thresh:.4f}')
+                    relearn_high = True
+                    relearn_schedule_ws.append((w_i, avg_distance))
+                elif avg_distance < low_thresh and not relearn_low and not relearn_high:
+                    log.info(f'Schedule relearn of policy, as {avg_distance:.4f} < {low_thresh:.4f}')
+                    relearn_low = True
+                    relearn_schedule_ws.append((w_i, avg_distance))
+                elif (relearn_high and avg_distance <= high_thresh
+                      or relearn_low and avg_distance >= low_thresh):
+                    enforce = 'relearn'
+                    while enforce == 'relearn':
+                        with open(os.getenv('CONFIG'), 'r') as f:
+                            config = yaml.safe_load(f)
+                        max_attributes = int(config['settings']['max_attributes'])
+                        max_buffer = int(config['settings']['max_buffer'])
+                        maxlen = max_buffer
+                        window_size = int(config['settings']['window_size'])
+                        g = max(int(config['settings']['g']), 0)
+                        k = max(int(config['settings']['k']), 1)
+                        c = max(int(config['settings']['c']), 0)
+                        preferred_attrs = list(config['settings']['required_attributes'])
+                        allowlist = str(config['settings']['always_allow'])
+                        decay = float(config['settings']['decay'])
+                        next_requests, next_distances, permanents = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
+                        allowed = [{'input': json.loads(al)['input']} for al in allowlist.split('\n')] if allowlist else []
+                        for al in allowed:
+                            if al not in next_requests:
+                                next_requests.append(al), next_distances.append(0), permanents.append(True)
+                        outliers_fraction = max(min(permanents.count(False)/len(permanents), 0.5), 0.1)
+                        strr = "high" if relearn_high else "low" if relearn_low else "calibrate"
+                        log.info(f'Relearn {strr}, outliers frac: {outliers_fraction}')
+                        new_policy_path, new_policy_time, new_package = generate_policy(
+                            deepcopy(next_requests), next_distances, max_attributes, g, k, c, preferred_attrs,
+                            f'{deploy_name}_{p_i}', tasks_dir, models_dir, policies_dir, deploy_name, restructure
+                        )
+                        generate_policy_diff(new_policy_path, new_policy_time, curr_policy_path, curr_policy_time, p_i,
+                                             differ, f'{deploy_name}_{p_i-1}-{p_i}', policies_dir, diffs_dir)
+                        with open(curr_policy_path, 'r') as f1:
+                            with open(new_policy_path, 'r') as f2:
+                                if f1.read() != f2.read():
+                                    enforce = input(f'Approve policy {p_i} for enforcement? y/n/relearn: ')
+                                    if enforce == 'y':
+                                        enforce_policy(new_policy_path, deploy_name)
+                                else:
+                                    enforce = 'n'
+                        p_i += 1
+                    relearn_windows.append((w_i, avg_distance))
+                    curr_policy_path, curr_policy_time, curr_package = new_policy_path, new_policy_time, new_package
+                    learned_requests = next_requests
+                    last_relearn = len(avg_distances)
+                    next_set.append(deepcopy([(r, d, True) for (r, d, _) in sorted(list(filter(lambda r: not r[2], reduce(lambda a, b: a + b, next_set))), key=lambda p: p[1], reverse=relearn_high)[:window_size]]))
+                    relearn_high, relearn_low = False, False
+                w_i += 1
+                window.clear()
+    except KeyboardInterrupt:
+        x, avg_distances = zip(*avg_distances)
+        plt.plot(x, avg_distances)
+        x, high_relearn_thresholds, low_relearn_thresholds = zip(*thresholds)
+        plt.plot(x, high_relearn_thresholds, 'k--', label='relearn threshold', linewidth=0.5)
+        plt.plot(x, low_relearn_thresholds, 'k--', linewidth=0.5)
+        if relearn_schedule_ws:
+            x_relearn_ws, y_relearn = zip(*relearn_schedule_ws)
+            plt.plot(x_relearn_ws, y_relearn, 'go', label='schedule relearn')
+        if relearn_windows:
+            x_relearn, y1_relearn = zip(*relearn_windows)
+            plt.plot(x_relearn, y1_relearn, 'ro', label='relearn')
+        else:
+            x_relearn = []
+        decay_str = str(decay).replace(".", "_")
+        name = f'{deploy_name}-{decay_str}-{distance_measure}'
+        plt.legend()
+        plt.title('Average distance of learning set to learned set')
+        plt.xlabel(f'Window (size {window_size})')
+        plt.ylabel(f'Average distance')
+        plt.savefig(f'{plots_dir}/{name}-req_dist.png')
 
 
 if __name__ == '__main__':

@@ -244,12 +244,12 @@ settings:
 
   max_attributes: 30
   max_buffer: 100
-  base_window_size: 1
-  g: 2
-  k: 2
+  window_size: 1
+  g: 3
+  k: 4
   c: 1
   decay: 0.9
-  required_attributes:
+  preferred_attributes:
     - "request__method(M)"
     - "request__body(B)"
     - "parsed_path(I, P)"

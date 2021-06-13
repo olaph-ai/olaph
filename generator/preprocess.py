@@ -33,8 +33,8 @@ def _restructure_request(request):
     # request['input']['attributes']['source'].pop('principal', None)
     # request['input']['attributes']['source']['address']['socketAddress'].pop('portValue')
     # Shortcuts for Rego imports
-    request['source'] = request['input']['attributes']['source']['address'].pop('socketAddress')
-    request['destination'] = request['input']['attributes']['destination']['address'].pop('socketAddress')
+    # request['source'] = request['input']['attributes']['source']['address'].pop('socketAddress')
+    # request['destination'] = request['input']['attributes']['destination']['address'].pop('socketAddress')
     # request['headers'] = request['input']['attributes']['request']['http'].pop('headers')
     request['request'] = request['input']['attributes']['request'].pop('http')
 
