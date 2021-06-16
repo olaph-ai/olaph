@@ -114,8 +114,10 @@ def run(deploy_name):
         g, k, c, preferred_attrs, f'{deploy_name}_1', tasks_dir, models_dir, policies_dir, deploy_name, restructure
     )
     next_set.append(deepcopy([(r, d, True) for (r, d, _) in sorted(list(filter(lambda r: not r[2], reduce(lambda a, b: a + b, next_set))), key=lambda p: p[1], reverse=True)[:window_size]]))
-    enforce = input('Approve policy 1 for enforcement? y/n: ') == 'y'
-    if enforce:
+    enforce = input('Approve policy 1 for enforcement? y/n: ')
+    while enforce not in ['y', 'n']:
+        enforce = input('Approve policy 1 for enforcement? y/n: ')
+    if enforce == 'y':
         enforce_policy(curr_policy_path, deploy_name)
     p_i, total_r = 2, len(window)
     w_i, c_i = 2, 2
