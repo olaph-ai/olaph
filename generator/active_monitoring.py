@@ -1,5 +1,6 @@
 import os
 import time
+import sys
 import json
 import subprocess
 from functools import reduce
@@ -184,7 +185,7 @@ def run(deploy_name):
                         g = max(int(config['settings']['g']), 0)
                         k = max(int(config['settings']['k']), 1)
                         c = max(int(config['settings']['c']), 0)
-                        preferred_attrs = list(config['settings']['required_attributes'])
+                        preferred_attrs = list(config['settings']['preferred_attributes'])
                         allowlist = str(config['settings']['always_allow'])
                         decay = float(config['settings']['decay'])
                         next_requests, next_distances, permanents = list(zip(*list(reduce(lambda a, b: a + b, next_set))))
@@ -205,6 +206,8 @@ def run(deploy_name):
                             with open(new_policy_path, 'r') as f2:
                                 if f1.read() != f2.read():
                                     enforce = input(f'Approve policy {p_i} for enforcement? y/n/relearn: ')
+                                    while enforce not in ['y', 'n', 'relearn']:
+                                        enforce = input(f'Approve policy {p_i} for enforcement? y/n/relearn: ')
                                     if enforce == 'y':
                                         enforce_policy(new_policy_path, deploy_name)
                                 else:
@@ -242,11 +245,12 @@ def run(deploy_name):
 
 
 if __name__ == '__main__':
-    # deploys = ['details-v1', 'productpage-v1', 'ratings-v1', 'reviews-v1', 'reviews-v2', 'reviews-v3']
-    # deploys = ['productpage-v1']
-    # ps = [Process(target=run, args=(d,)) for d in deploys]
-    # for p in ps:
-    #     p.start()
-    # while True:
-    #     pass
+    # if sys.argv[1] == 'productpage':
     run('productpage-v1')
+    # elif sys.argv[1] == 'all':
+    #     deploys = ['details-v1', 'productpage-v1', 'ratings-v1', 'reviews-v1', 'reviews-v2', 'reviews-v3']
+    #     ps = [Process(target=run, args=(d,)) for d in deploys]
+    #     for p in ps:
+    #         p.start()
+    #     while True:
+    #         pass

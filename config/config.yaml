@@ -246,7 +246,7 @@ settings:
   max_buffer: 100
   window_size: 1
   g: 3
-  k: 4
+  k: 2
   c: 1
   decay: 0.9
   preferred_attributes:
