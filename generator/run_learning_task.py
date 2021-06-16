@@ -23,7 +23,7 @@ def get_penalties(model, prev, not_in_quotes):
 
 def get_confidences(rule_penalties, body_cost, not_in_quotes):
     rule_confidences = []
-    total_p = sum([p - body_cost(len(split(rf', {not_in_quotes}', split(rf' :- {not_in_quotes}', rule)[1][:-1])))[0] for rule, p in rule_penalties])
+    total_p = sum([p - body_cost(len(split(rf', {not_in_quotes}', split(rf' :- {not_in_quotes}', rule)[1][:-1])))[0] for rule, p in rule_penalties if rule != 'allow.'])
     for rule, p in rule_penalties:
         rule_s = split(rf' :- {not_in_quotes}', rule)
         if len(rule_s) > 1:

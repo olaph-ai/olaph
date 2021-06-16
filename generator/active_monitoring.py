@@ -224,27 +224,31 @@ def run(deploy_name):
                 w_i += 1
                 window.clear()
     except KeyboardInterrupt:
-        x, avg_distances = zip(*avg_distances)
-        plt.plot(x, avg_distances)
-        x, high_relearn_thresholds, low_relearn_thresholds = zip(*thresholds)
-        plt.plot(x, high_relearn_thresholds, 'k--', label='relearn threshold', linewidth=0.5)
-        plt.plot(x, low_relearn_thresholds, 'k--', linewidth=0.5)
-        if relearn_schedule_ws:
-            x_relearn_ws, y_relearn = zip(*relearn_schedule_ws)
-            plt.plot(x_relearn_ws, y_relearn, 'go', label='schedule relearn')
-        if relearn_windows:
-            x_relearn, y1_relearn = zip(*relearn_windows)
-            plt.plot(x_relearn, y1_relearn, 'ro', label='relearn')
-        else:
-            x_relearn = []
-        decay_str = str(decay).replace(".", "_")
-        name = f'{deploy_name}-{decay_str}-{distance_measure}'
-        plt.legend()
-        plt.title('Average distance of learning set to learned set')
-        plt.xlabel(f'Window (size {window_size})')
-        plt.ylabel(f'Average distance')
-        plt.savefig(f'{plots_dir}/{name}-req_dist.png')
-
+        while True:
+            try:
+                x, y_avg_distances = zip(*avg_distances)
+                plt.plot(x, y_avg_distances)
+                x, high_relearn_thresholds, low_relearn_thresholds = zip(*thresholds)
+                plt.plot(x, high_relearn_thresholds, 'k--', label='relearn threshold', linewidth=0.5)
+                plt.plot(x, low_relearn_thresholds, 'k--', linewidth=0.5)
+                if relearn_schedule_ws:
+                    x_relearn_ws, y_relearn = zip(*relearn_schedule_ws)
+                    plt.plot(x_relearn_ws, y_relearn, 'go', label='schedule relearn')
+                if relearn_windows:
+                    x_relearn, y1_relearn = zip(*relearn_windows)
+                    plt.plot(x_relearn, y1_relearn, 'ro', label='relearn')
+                else:
+                    x_relearn = []
+                decay_str = str(decay).replace(".", "_")
+                name = f'{deploy_name}-{decay_str}-{distance_measure}'
+                plt.legend()
+                plt.title('Average distance of learning set to learned set')
+                plt.xlabel(f'Window (size {window_size})')
+                plt.ylabel(f'Average distance')
+                plt.savefig(f'{plots_dir}/{name}-req_dist.png')
+                break
+            except KeyboardInterrupt:
+                pass
 
 if __name__ == '__main__':
     # if sys.argv[1] == 'productpage':
