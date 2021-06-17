@@ -219,7 +219,8 @@ def run(deploy_name):
                     curr_policy_path, curr_policy_time, curr_package = new_policy_path, new_policy_time, new_package
                     learned_requests = next_requests
                     last_relearn = len(avg_distances)
-                    next_set.append(deepcopy([(r, d, True) for (r, d, _) in sorted(list(filter(lambda r: not r[2], reduce(lambda a, b: a + b, next_set))), key=lambda p: p[1], reverse=relearn_high)[:window_size]]))
+                    if enforce == 'y':
+                        next_set.append(deepcopy([(r, d, True) for (r, d, _) in sorted(list(filter(lambda r: not r[2], reduce(lambda a, b: a + b, next_set))), key=lambda p: p[1], reverse=relearn_high)[:window_size]]))
                     relearn_high, relearn_low = False, False
                 w_i += 1
                 window.clear()
