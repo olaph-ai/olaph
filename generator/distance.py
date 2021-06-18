@@ -20,32 +20,9 @@ def _preprocess(requests, prev_requests, max_attributes, restructure):
 
 def compute_distances(requests, prev_requests, distance_measure, max_attributes, restructure):
     requests, prev_requests = _preprocess(requests, prev_requests, max_attributes, restructure)
-    # min_dists = distance.cdist(requests, prev_requests, distance_measure).min(axis=1)
     min_dists = distance.cdist(requests, prev_requests, distance_measure).min(axis=1)
-    # import matplotlib.pyplot as plt
-    # plt.plot(range(len(min_dists)), min_dists)
-    # plt.title('Minimum distance of incoming requests to the learned set')
-    # plt.xlabel('Request')
-    # plt.ylabel('Minimum Manhattan distance')
-    # plt.savefig('/plots/mindist.png')
-    # import sys
-    # sys.exit(0)
-    # import matplotlib.pyplot as plt
-    # plt.plot(range(len(min_dists)), min_dists)
-    # plt.title('Minimum distance of incoming requests to the learned set')
-    # plt.xlabel('Request')
-    # plt.ylabel('Minimum Jaccard distance')
-    # plt.savefig('/plots/minjaccarddist.png')
-    # import sys
-    # sys.exit(0)
     return min_dists
 
 def compute_hd_distance(requests, prev_requests, max_attributes):
     requests, prev_requests = _preprocess(requests, prev_requests, max_attributes)
     return distance.directed_hausdorff(requests, prev_requests)[0]
-
-if __name__ == '__main__':
-    logging.basicConfig()
-    all_requests = get_requests_from_logs(f'../data/synheart-controller-opa-istio.log')
-    requests, prev_requests = all_requests[40:50], all_requests[:40]
-    ds = compute_distances(requests, prev_requests, 20)

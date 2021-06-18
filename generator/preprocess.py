@@ -94,21 +94,6 @@ def _select_features(ds, max_attributes):
     encoded = pd.DataFrame(OrdinalEncoder().fit_transform(data.astype(str)), columns=data.columns)
     heavy_tailedness = encoded.kurtosis().sort_values(ascending=False)
     chosen_attributes = sorted(heavy_tailedness.index.sort_values().to_list())[:max_attributes]
-    # if len(data.columns) > 0:
-    #     k_max = heavy_tailedness[0]
-    #     k_min = heavy_tailedness[-1]
-    #     dk_max = encoded[heavy_tailedness.index[0]]
-    #     dk_min = encoded[heavy_tailedness.index[-1]]
-    #     import matplotlib.pyplot as plt
-    #     plt.plot(dk_max.index, dk_max, label=f'max (v = {k_max:.1f})')
-    #     plt.plot(dk_min.index, dk_min, label=f'min (v = {k_min:.1f})')
-    #     plt.title('Distribution of encoded attribute')
-    #     plt.xlabel('Request')
-    #     plt.ylabel('Encoded attribute value')
-    #     plt.legend()
-    #     plt.savefig('/plots/variance.png')
-    #     import sys
-    #     sys.exit(0)
     return list(map(lambda d: {k: v for k, v in d.items() if k in chosen_attributes}, ds)), len(chosen_attributes)
 
 def select_features(data, max_attributes):
@@ -121,7 +106,7 @@ def process_examples(requests, max_attributes, restructure):
     if restructure:
         processed = list(map(_restructure_request, requests))
     else:
-        processed = list(map(lambda r: (dict(), {(k[0].lower(),) + k[1:]: v for k, v in flatten(r).items() if k[1] != 'end_time' and k[1] != 'start_time' and 'CONTAINER_START_TIME' not in k and 'IMAGE_ID' not in k and 'IMAGE_PARENT_ID' not in k and 'CONTAINER_TYPE' not in k and 'IMAGE_AUTHOR' not in k}), requests))
+        processed = list(map(lambda r: (dict(), {(k[0].lower(),) + k[1:]: v for k, v in flatten(r).items()}), requests))
     return select_features(processed, max_attributes)
 
 def preprocess_data(requests, max_attributes, restructure):
