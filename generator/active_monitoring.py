@@ -23,11 +23,8 @@ from multiprocessing import Process
 logging.basicConfig(level=logging.INFO, format='%(name)s: %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
-def enforce_policy(policy_path, deploy_name):
-    with open(policy_path, 'r') as f:
-        policy = f.readlines()
-        policy = ''.join([f'    {line}' for line in policy])
-        configmap = f"""
+def enforce_policy(policy, deploy_name):
+    configmap = f"""
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -62,8 +59,14 @@ def run(deploy_name):
     log.info(config['settings'])
     restructure = True
     distance_measure = 'cityblock'
-    enforce_policy(f'{policies_dir}/default.rego', deploy_name)
+    policy = """
+package istio.authz
 
+default allow = false
+
+allow = true   
+"""
+    enforce_policy(policy, deploy_name)
     max_attributes = int(config['settings']['max_attributes'])
     max_buffer = int(config['settings']['max_buffer'])
     maxlen = max_buffer
@@ -118,7 +121,10 @@ def run(deploy_name):
     while enforce not in ['y', 'n']:
         enforce = input('Approve policy 1 for enforcement? y/n: ')
     if enforce == 'y':
-        enforce_policy(curr_policy_path, deploy_name)
+        with open(curr_policy_path, 'r') as f:
+            policy = f.readlines()
+            policy = ''.join([f'    {line}' for line in policy])
+        enforce_policy(policy, deploy_name)
     p_i, total_r = 2, len(window)
     w_i, c_i = 2, 2
     last_relearn = 0
@@ -211,7 +217,10 @@ def run(deploy_name):
                                     while enforce not in ['y', 'n', 'relearn']:
                                         enforce = input(f'Approve policy {p_i} for enforcement? y/n/relearn: ')
                                     if enforce == 'y':
-                                        enforce_policy(new_policy_path, deploy_name)
+                                        with open(new_policy_path, 'r') as f:
+                                            policy = f.readlines()
+                                            policy = ''.join([f'    {line}' for line in policy])
+                                        enforce_policy(policy, deploy_name)
                                 else:
                                     enforce = 'n'
                         p_i += 1
