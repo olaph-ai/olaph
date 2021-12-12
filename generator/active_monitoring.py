@@ -60,11 +60,11 @@ def run(deploy_name):
     restructure = True
     distance_measure = 'cityblock'
     policy = """
-package istio.authz
+    package istio.authz
 
-default allow = false
+    default allow = false
 
-allow = true   
+    allow = true   
 """
     enforce_policy(policy, deploy_name)
     max_attributes = int(config['settings']['max_attributes'])
