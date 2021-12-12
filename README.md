@@ -2,7 +2,7 @@
 Olaph learns enforceable policies of normal behaviour from live application logs.
 
 Configuration:
-* Environment variable `OLAPH_OUTDIR` - set to a directory that will contain Olaph's output. Default to the current working directory.
+* Environment variable `OLAPH_OUTDIR` - set to a directory that will contain Olaph's output. Defaults to the current working directory.
 ## Active Monitoring
 Olaph can be run as an active monitor, which learns online and enforces access policies for an application running on an Istio-enabled Kubernetes cluster.
 ### Prerequisites
