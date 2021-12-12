@@ -1,5 +1,5 @@
 # Olaph
-Olaph learns enforceable policies of normal behaviour from live application logs.
+Olaph learns enforceable policies of normal behaviour from live application logs. Walk-through demo: https://olaph-ai.github.io/.
 
 Configuration:
 * Environment variable `OLAPH_OUTDIR` - set to a directory that will contain Olaph's output. Defaults to the current working directory.
