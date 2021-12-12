@@ -1,6 +1,4 @@
 paths:
-  data: flexibility.json
-  data_dir: /data
   tasks_dir: /tasks
   models_dir: /models
   policies_dir: /policies
