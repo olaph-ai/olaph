@@ -1,7 +1,7 @@
 # Olaph
-Olaph learns enforceable policies of normal behaviour from application logs.
+Olaph learns enforceable policies of normal behaviour from live application logs.
 ## Active Monitoring
-Olaph can be run as an active monitor, which learns and enforces access policies for an application running on an Istio-enabled Kubernetes cluster.
+Olaph can be run as an active monitor, which learns online and enforces access policies for an application running on an Istio-enabled Kubernetes cluster.
 ### Prerequisites
 Install Docker Desktop - [installation guide](https://docs.docker.com/get-docker/) and [enable the Kubernetes cluster](https://docs.docker.com/desktop/kubernetes/). Once the cluster is up, run the following commands.
 
@@ -29,17 +29,6 @@ git clone https://github.com/olaph-ai/olaph.git
 cd olaph
 make monitor
 ```
-In a new terminal window, expose the sample application:
-```sh
-minikube tunnel
-```
-Get the sample application url by:
-```sh
-export INGRESS_HOST=$(kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-export INGRESS_PORT=$(kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="http2")].port}')
-export GATEWAY_URL=$INGRESS_HOST:$INGRESS_PORT
-echo "$GATEWAY_URL/productpage"    # Sample application url
-```
-Paste the output of the previous command into your browser, e.g. `127.0.0.1:80/productpage`
+The sample application should be accessible from a web browser using the url `http://localhost/productpage`.
 ### Usage
-Interact with the sample application through the browser and keep an eye on Olaph's logs for policy relearns, which will output the relearned policy in the `policies` folder, along with the policy differences in `diffs`. A policy confidence graph will be outputted in the `plots` folder after suspending Olaph's execution with `CTRL+C`.
+Interact with the sample application through the browser and keep an eye on Olaph's logs for policy relearns, which will output the relearned policy in the `policies` folder, along with the policy differences in `diffs`. A policy confidence graph will be outputted in the `plots` folder after suspending Olaph's execution with `CTRL+C`. A more detailed guide can be found at https://olaph-ai.github.io/.
