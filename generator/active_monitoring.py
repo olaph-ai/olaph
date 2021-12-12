@@ -49,8 +49,6 @@ data:
 def run(deploy_name):
     with open(os.getenv('CONFIG'), 'r') as f:
         config = yaml.safe_load(f)
-    data = config['paths']['data']
-    data_dir = config['paths']['data_dir']
     tasks_dir = config['paths']['tasks_dir']
     models_dir = config['paths']['models_dir']
     policies_dir = config['paths']['policies_dir']
