@@ -4,7 +4,9 @@ Olaph learns enforceable policies of normal behaviour from application logs.
 Olaph can be run as an active monitor, which learns and enforces access policies for an application running on an Istio-enabled Kubernetes cluster.
 ### Prerequisites
 Install Docker - [installation guide](https://docs.docker.com/get-docker/)
+
 Install the [minikube Kubernetes cluster](https://minikube.sigs.k8s.io/docs/start/). Once the cluster is up, run the following commands.
+
 To install Istio ([docs](https://istio.io/latest/docs/setup/getting-started/)):
 ```sh
 curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.12.1 TARGET_ARCH=x86_64 sh -
