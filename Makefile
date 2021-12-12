@@ -1,3 +1,5 @@
+OLAPH_OUTDIR := $(shell pwd)
+
 all: build generate
 
 monitor: build mon
