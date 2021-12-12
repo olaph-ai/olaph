@@ -32,3 +32,14 @@ make monitor
 The sample application should be accessible from a web browser using the url `http://localhost/productpage`.
 ### Usage
 Interact with the sample application through the browser and keep an eye on Olaph's logs for policy relearns, which will output the relearned policy in the `policies` folder, along with the policy differences in `diffs`. A policy confidence graph will be outputted in the `plots` folder after suspending Olaph's execution with `CTRL+C`. A more detailed guide can be found at https://olaph-ai.github.io/.
+## Uninstall
+```sh
+kubectl delete -f https://raw.githubusercontent.com/istio/istio/master/samples/bookinfo/platform/kube/bookinfo.yaml
+kubectl delete -f https://raw.githubusercontent.com/istio/istio/master/samples/bookinfo/networking/bookinfo-gateway.yaml
+kubectl label namespace default opa-istio-injection-
+kubectl label namespace default istio-injection-
+kubectl delete -f https://raw.githubusercontent.com/olaph-ai/olaph/main/opa-istio.yaml
+```
+[Uninstall Istio](https://istio.io/latest/docs/setup/getting-started/#uninstall)
+
+[Uninstall Docker and Kubernetes](https://docs.docker.com/desktop/mac/install/#uninstall-docker-desktop)
