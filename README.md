@@ -42,4 +42,4 @@ echo "$GATEWAY_URL/productpage"    # Sample application url
 ```
 Paste the output of the previous command into your browser, e.g. `127.0.0.1:80/productpage`
 ### Usage
-Interact with the sample application through the browser and keep an eye on Olaph's logs for 
+Interact with the sample application through the browser and keep an eye on Olaph's logs for policy relearns, which will output the relearned policy in the `policies` folder, along with the policy differences in `diffs`. A policy confidence graph will be outputted in the `plots` folder after suspending Olaph's execution with `CTRL+C`.
