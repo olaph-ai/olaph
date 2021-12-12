@@ -3,9 +3,7 @@ Olaph learns enforceable policies of normal behaviour from application logs.
 ## Active Monitoring
 Olaph can be run as an active monitor, which learns and enforces access policies for an application running on an Istio-enabled Kubernetes cluster.
 ### Prerequisites
-Install Docker - [installation guide](https://docs.docker.com/get-docker/)
-
-Install the [minikube Kubernetes cluster](https://minikube.sigs.k8s.io/docs/start/). Once the cluster is up, run the following commands.
+Install Docker Desktop - [installation guide](https://docs.docker.com/get-docker/) and [enable the Kubernetes cluster](https://docs.docker.com/desktop/kubernetes/). Once the cluster is up, run the following commands.
 
 To install Istio ([docs](https://istio.io/latest/docs/setup/getting-started/)):
 ```sh
@@ -16,7 +14,7 @@ istioctl install --set profile=demo -y
 ```
 To install the OPA Envoy Plugin ([docs](https://github.com/open-policy-agent/opa-envoy-plugin/tree/main/examples/istio#quick-start)):
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/open-policy-agent/opa-envoy-plugin/main/examples/istio/quick_start.yaml
+kubectl apply -f https://raw.githubusercontent.com/olaph-ai/olaph/main/opa-istio.yaml
 kubectl label namespace default opa-istio-injection="enabled"
 kubectl label namespace default istio-injection="enabled"
 ```
