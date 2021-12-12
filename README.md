@@ -26,7 +26,7 @@ Deploy the sample application:
 kubectl apply -f https://raw.githubusercontent.com/istio/istio/master/samples/bookinfo/platform/kube/bookinfo.yaml
 kubectl apply -f https://raw.githubusercontent.com/istio/istio/master/samples/bookinfo/networking/bookinfo-gateway.yaml
 ```
-In a new terminal window, deploy Olaph:
+Deploy Olaph:
 ```sh
 git clone https://github.com/olaph-ai/olaph.git
 cd olaph
