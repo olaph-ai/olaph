@@ -1,0 +1,19 @@
+paths:
+  data: test-data.json
+  data_dir: /data
+  tasks_dir: /tasks
+  models_dir: /models
+  policies_dir: /policies
+  diffs_dir: /diffs
+  plots_dir: /plots
+settings:
+  max_attributes: 30
+  max_buffer: 1000
+  window_size: 50
+  g: 0
+  k: 8
+  c: 1
+  decay: 0.9
+  preferred_attributes: {}
+  always_allow: |
+  always_deny: |
