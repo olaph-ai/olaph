@@ -49,5 +49,5 @@ mon:
 			   -v ${OLAPH_OUTDIR}/diffs:/diffs \
 			   -v ${OLAPH_OUTDIR}/plots:/plots \
                            -v $(shell pwd)/config:/config -e CONFIG=/config/config.yaml \
-			   -v $${HOME}/.minikube:/root/.minikube \
+			   -v ${HOME}/.minikube:/root/.minikube \
 	  			drozza/olaph:latest python3 /generator/active_monitoring.py
