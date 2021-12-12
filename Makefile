@@ -3,10 +3,10 @@ all: build generate
 monitor: build mon
 
 build:
-			docker build -q -t drozza/olaph:latest .
+			docker build -t drozza/olaph:latest .
 
 push:
-			docker push -q drozza/olaph:latest
+			docker push drozza/olaph:latest
 
 learn:
 	    docker run -v $(shell pwd)/../tasks:/tasks -v $(shell pwd)/../models:/models \
@@ -36,15 +36,16 @@ bash:
 								 -v $(shell pwd)/../diffs:/diffs \
 								 -it drozza/olaph:latest bash
 
-# eval:
-# 			opa eval -f pretty -i ../data/single/synheart-controller-opa-istio1.log.json -d ../policies/synheart-controller-opa-istio0.rego "data.synheart_controller_opa_istio.allow"
 eval:
 			opa eval -i ../data/single/synth-heart11-single.json -d ../policies/synth-heart11_1.rego "data.synth_heart11.allow"
 
 mon:
-	    docker run -it -v ${OLAPH_CONF}/tasks:/tasks -v ${OLAPH_CONF}/models:/models \
-						         -v ${OLAPH_CONF}/policies:/policies \
-							 -v ${OLAPH_CONF}/diffs:/diffs -v ${OLAPH_CONF}/plots:/plots \
-                                                         -v $(shell pwd)/config:/config -e CONFIG=/config/config.yaml \
-						         -v $${HOME}/.kube:/root/.kube \
-	  							drozza/olaph:latest python3 /generator/active_monitoring.py
+	    mkdir -p ${OLAPH_OUTDIR}/tasks ${OLAPH_OUTDIR}/models ${OLAPH_OUTDIR}/policies ${OLAPH_OUTDIR}/diffs ${OLAPH_OUTDIR}/plots && \
+	    docker run -it -v ${OLAPH_OUTDIR}/tasks:/tasks \
+	                   -v ${OLAPH_OUTDIR}/models:/models \
+			   -v ${OLAPH_OUTDIR}/policies:/policies \
+			   -v ${OLAPH_OUTDIR}/diffs:/diffs \
+			   -v ${OLAPH_OUTDIR}/plots:/plots \
+                           -v $(shell pwd)/config:/config -e CONFIG=/config/config.yaml \
+			   -v $${HOME}/.kube:/root/.kube \
+	  			drozza/olaph:latest python3 /generator/active_monitoring.py
