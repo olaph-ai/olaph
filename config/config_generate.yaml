@@ -1,5 +1,5 @@
 paths:
-  data: test-data.json
+  data: test-data.log
   data_dir: /data
   tasks_dir: /tasks
   models_dir: /models
