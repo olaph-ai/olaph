@@ -65,12 +65,7 @@ def run():
     lf = open(data_path, 'rb')
     while len(window) < window_size:
         line = lf.readline().decode().strip()
-        try:
-            llog = json.loads(line)
-        except:
-            del lf
-            lf = open(data_path, 'rb')
-            continue
+        llog = json.loads(line)
         if llog['msg'] == 'Decision Log':
             window.append({'input': llog['input']})
     distances = [0] * len(window)
@@ -103,12 +98,7 @@ def run():
     try:
         while True:
             line = lf.readline().decode().strip()
-            try:
-                llog = json.loads(line)
-            except:
-                del lf
-                lf = open(data_path, 'rb')
-                continue
+            llog = json.loads(line)
             if llog['msg'] == 'Decision Log':
                 window.append({'input': llog['input']})
             if len(window) == window_size:
@@ -192,6 +182,8 @@ def run():
                 w_i += 1
                 window.clear()
     except KeyboardInterrupt:
+        pass
+    finally:
         while True:
             try:
                 x, y_avg_distances = zip(*avg_distances)
