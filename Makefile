@@ -1,7 +1,7 @@
 OLAPH_OUTDIR := $(shell pwd)
 OLAPH_INDIR := $(shell pwd)
 
-all: pull gen
+all: build gen
 
 generate: pull gen
 
