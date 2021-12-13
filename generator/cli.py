@@ -101,7 +101,8 @@ def run():
             try:
                 llog = json.loads(line)
             except:
-                log.error(line)
+                pass
+            log.info(llog)
             if llog['msg'] == 'Decision Log':
                 window.append({'input': llog['input']})
             if len(window) == window_size:
