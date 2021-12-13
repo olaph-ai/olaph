@@ -36,7 +36,7 @@ def run():
     diffs_dir = config['paths']['diffs_dir']
     plots_dir = config['paths']['plots_dir']
     log.info(config['settings'])
-    restructure = True
+    restructure = False
     distance_measure = 'cityblock'
     max_attributes = int(config['settings']['max_attributes'])
     max_buffer = int(config['settings']['max_buffer'])
