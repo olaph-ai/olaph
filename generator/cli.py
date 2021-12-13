@@ -98,7 +98,10 @@ def run():
     try:
         while True:
             line = lf.readline().decode().strip()
-            llog = json.loads(line)
+            try:
+                llog = json.loads(line)
+            except:
+                log.error(line)
             if llog['msg'] == 'Decision Log':
                 window.append({'input': llog['input']})
             if len(window) == window_size:
@@ -209,6 +212,7 @@ def run():
                 break
             except KeyboardInterrupt:
                 pass
+        lf.close()
 
 if __name__ == '__main__':
     run()
