@@ -68,10 +68,11 @@ def run():
         try:
             llog = json.loads(line)
         except json.decoder.JSONDecodeError as e:
-            log.error(e)
-            log.error(line)
-        if llog['msg'] == 'Decision Log':
-            window.append({'input': llog['input']})
+            if not line:
+                # End of file
+                break
+            log.error(f'{e} caused by: {line})
+        window.append(llog)
     distances = [0] * len(window)
     permanents = [False] * len(window)
     next_set.append(list(zip(window, distances, permanents)))
@@ -105,10 +106,11 @@ def run():
             try:
                 llog = json.loads(line)
             except json.decoder.JSONDecodeError as e:
-                log.error(e)
-                log.error(line)
-            if llog['msg'] == 'Decision Log':
-                window.append({'input': llog['input']})
+                if not line:
+                    # End of file
+                    break
+                log.error(f'{e} caused by: {line})
+            window.append(llog)
             if len(window) == window_size:
                 distances = compute_distances(deepcopy(window), deepcopy(learned_requests),
                                               distance_measure, max_attributes, restructure)
