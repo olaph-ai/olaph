@@ -64,7 +64,7 @@ def run():
     w_i = 0
     lf = open(data_path, 'r')
     while len(window) < window_size:
-        line = lf.readline().strip()
+        line = lf.readline().rstrip()
         try:
             llog = json.loads(line)
         except json.decoder.JSONDecodeError as e:
@@ -101,7 +101,7 @@ def run():
     window.clear()
     try:
         while True:
-            line = lf.readline().strip()
+            line = lf.readline().rstrip()
             try:
                 llog = json.loads(line)
             except json.decoder.JSONDecodeError as e:
