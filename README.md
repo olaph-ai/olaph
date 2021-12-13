@@ -1,9 +1,31 @@
 # Olaph
-Olaph learns enforceable policies of normal behaviour from live application logs. Walk-through demo: https://olaph-ai.github.io/.
+Olaph learns enforceable policies of normal behaviour online from application logs. Walk-through demo: https://olaph-ai.github.io/.
 
 Configuration:
 * Environment variable `OLAPH_INDIR` - set to a directory that will contain Olaph's input data. Defaults to the current working directory.
 * Environment variable `OLAPH_OUTDIR` - set to a directory that will contain Olaph's output. Defaults to the current working directory.
+* If you are learning policies from custom data, set the `<data_path>` in `config/config.yaml` to the path to your data file in the `OLAPH_INDIR` directory. Defaults to `test-data.log` in `data/`. 
+  ```
+  paths:
+    data: <data_path>
+  ```
+
+Currently, there are two modes for running Olaph. The [first mode](#learn-policies-from-a-log-file) is learning policies from a log file, where online learning is simulated by iterating through the file line-by-line. In the [second mode](#active-monitoring), Olaph is integrated into a Kubernetes cluster to learn policies for a live application.
+## Learn policies from a log file
+In this mode, Olaph can learn policies of normal behaviour from a file consisting of JSON logs on each line, like [test-data.log](https://github.com/olaph-ai/olaph/blob/main/data/test-data.log) in this repository.
+### Prerequisites
+Install Docker - [installation guide](https://docs.docker.com/get-docker/)
+### Usage
+Run Olaph on the provided dataset in this repository:
+```
+make generate
+```
+Watch the output of this command for prompts to relearn the policy:
+```
+Approve policy 2? y/n/relearn:
+```
+A policy difference should be created in the `diffs` folder in the current working directory, unless you have configured `OLAPH_OUTDIR` to point somewhere else.
+Enter one of `y`, `n`, or change the parameters under `settings:` in `config/config_generate.yaml` and enter `relearn`. The policies themselves will be put in the `policies` directory. At the end of Olaph's execution, the policy confidence plot with the relearns and thresholds can be found in the `plots` directory.
 ## Active Monitoring
 Olaph can be run as an active monitor, which learns online and enforces access policies for an application running on an Istio-enabled Kubernetes cluster.
 ### Prerequisites
