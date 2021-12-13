@@ -125,7 +125,7 @@ def run():
                 mean_avg_d = np.mean(curr_avg_distances)
                 std_avg_d = np.std(curr_avg_distances)
                 high_thresh = mean_avg_d + 2 * std_avg_d
-                low_thresh = max(mean_avg_d - 2 * std_avg_d, 0)
+                low_thresh = max(mean_avg_d - 2 * std_avg_d, 0.001)
                 thresholds.append((w_i, high_thresh, low_thresh))
                 if len(curr_avg_distances) > 1:
                     volatilities.append((w_i, std_avg_d))
@@ -145,6 +145,7 @@ def run():
                 elif (relearn_high and avg_distance <= high_thresh
                       or relearn_low and avg_distance >= low_thresh):
                     enforce = 'relearn'
+                    p_i_old = p_i - 1
                     while enforce == 'relearn':
                         with open(os.getenv('CONFIG'), 'r') as f:
                             config = yaml.safe_load(f)
@@ -171,7 +172,7 @@ def run():
                             f'{data_base}_{p_i}', tasks_dir, models_dir, policies_dir, data_base, restructure
                         )
                         generate_policy_diff(new_policy_path, new_policy_time, curr_policy_path, curr_policy_time, p_i,
-                                             differ, f'{data_base}_{p_i-1}-{p_i}', policies_dir, diffs_dir)
+                                             differ, f'{data_base}_{p_i_old}-{p_i}', policies_dir, diffs_dir)
                         with open(curr_policy_path, 'r') as f1:
                             with open(new_policy_path, 'r') as f2:
                                 if f1.read() != f2.read():
