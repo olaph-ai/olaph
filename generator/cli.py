@@ -71,7 +71,7 @@ def run():
             if not line:
                 # End of file
                 break
-            log.error(f'{e} caused by: {line})
+            log.error(f'{e} caused by: {line}')
         window.append(llog)
     distances = [0] * len(window)
     permanents = [False] * len(window)
@@ -109,7 +109,7 @@ def run():
                 if not line:
                     # End of file
                     break
-                log.error(f'{e} caused by: {line})
+                log.error(f'{e} caused by: {line}')
             window.append(llog)
             if len(window) == window_size:
                 distances = compute_distances(deepcopy(window), deepcopy(learned_requests),
