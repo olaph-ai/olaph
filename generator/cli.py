@@ -62,13 +62,13 @@ def run():
     thresholds = []
     window = []
     w_i = 0
-    lf = open(data_path, 'rb')
+    lf = open(data_path, 'r')
     while len(window) < window_size:
-        line = lf.readline().decode().strip()
+        line = lf.readline().strip()
         try:
             llog = json.loads(line)
         except json.decoder.JSONDecodeError as e:
-            log.error(e)
+            log.error(e, line)
         if llog['msg'] == 'Decision Log':
             window.append({'input': llog['input']})
     distances = [0] * len(window)
@@ -100,11 +100,11 @@ def run():
     window.clear()
     try:
         while True:
-            line = lf.readline().decode().strip()
+            line = lf.readline().strip()
             try:
                 llog = json.loads(line)
             except json.decoder.JSONDecodeError as e:
-                log.error(e)
+                log.error(e, line)
             if llog['msg'] == 'Decision Log':
                 window.append({'input': llog['input']})
             if len(window) == window_size:
