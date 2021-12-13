@@ -1,4 +1,5 @@
 OLAPH_OUTDIR := $(shell pwd)
+OLAPH_INDIR := $(shell pwd)
 
 all: build gen
 
@@ -25,8 +26,8 @@ output:
 										FastLAS --output-solve-program /tasks/synheart-controller-opa-istio.las > ../models/synheart-controller-opa-istio.lp
 
 gen:
-	    mkdir -p ${OLAPH_OUTDIR}/tasks ${OLAPH_OUTDIR}/models ${OLAPH_OUTDIR}/policies ${OLAPH_OUTDIR}/diffs ${OLAPH_OUTDIR}/plots && \
-	    docker run -it -v ${OLAPH_OUTDIR}/data:/data \
+	    mkdir -p ${OLAPH_OUTDIR}/tasks ${OLAPH_OUTDIR}/models ${OLAPH_OUTDIR}/policies ${OLAPH_OUTDIR}/diffs ${OLAPH_OUTDIR}/plots ${OLAPH_INDIR}/data && \
+	    docker run -it -v ${OLAPH_INDIR}/data:/data \
 	                   -v ${OLAPH_OUTDIR}/tasks:/tasks \
 	                   -v ${OLAPH_OUTDIR}/models:/models \
 			   -v ${OLAPH_OUTDIR}/policies:/policies \
