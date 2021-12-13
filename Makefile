@@ -12,6 +12,9 @@ build:
 
 push:
 			docker push drozza/olaph:latest
+			
+pull:
+			docker pull drozza/olaph:latest
 
 learn:
 	    docker run -v $(shell pwd)/../tasks:/tasks -v $(shell pwd)/../models:/models \
