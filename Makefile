@@ -26,7 +26,8 @@ output:
 
 gen:
 	    mkdir -p ${OLAPH_OUTDIR}/tasks ${OLAPH_OUTDIR}/models ${OLAPH_OUTDIR}/policies ${OLAPH_OUTDIR}/diffs ${OLAPH_OUTDIR}/plots && \
-	    docker run -it -v ${OLAPH_OUTDIR}/tasks:/tasks \
+	    docker run -it -v ${OLAPH_OUTDIR}/data:/data \
+	                   -v ${OLAPH_OUTDIR}/tasks:/tasks \
 	                   -v ${OLAPH_OUTDIR}/models:/models \
 			   -v ${OLAPH_OUTDIR}/policies:/policies \
 			   -v ${OLAPH_OUTDIR}/diffs:/diffs \
