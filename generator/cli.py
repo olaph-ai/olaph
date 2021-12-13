@@ -105,7 +105,8 @@ def run():
             try:
                 llog = json.loads(line)
             except json.decoder.JSONDecodeError as e:
-                log.error(e, line)
+                log.error(e)
+                log.error(line)
             if llog['msg'] == 'Decision Log':
                 window.append({'input': llog['input']})
             if len(window) == window_size:
