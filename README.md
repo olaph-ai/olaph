@@ -10,7 +10,7 @@ Configuration:
     data: <data_path>
   ```
 
-Currently, there are two modes for running Olaph. The [first mode](#learn-policies-from-a-log-file) is learning policies from a log file, where online learning is simulated by iterating through the file line-by-line. In the [second mode](#active-monitoring), Olaph is integrated into a Kubernetes cluster to learn policies for a live application.
+There are two modes for running Olaph. The [first mode](#learn-policies-from-a-log-file) is learning policies from a log file, where online learning is simulated by iterating through the file line-by-line. In the [second mode](#active-monitoring), Olaph is integrated into a Kubernetes cluster to learn policies for a live application.
 ## Learn policies from a log file
 In this mode, Olaph can learn policies of normal behaviour from a file consisting of JSON logs on each line, like [test-data.log](https://github.com/olaph-ai/olaph/blob/main/data/test-data.log) in this repository.
 ### Prerequisites
