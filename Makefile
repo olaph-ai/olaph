@@ -1,6 +1,8 @@
 OLAPH_OUTDIR := $(shell pwd)
 
-all: build generate
+all: build gen
+
+generate: build gen
 
 monitor: build mon
 
@@ -22,12 +24,15 @@ output:
 	  								drozza/olaph:latest \
 										FastLAS --output-solve-program /tasks/synheart-controller-opa-istio.las > ../models/synheart-controller-opa-istio.lp
 
-generate:
-	    docker run -v $(shell pwd)/../tasks:/tasks -v $(shell pwd)/../models:/models \
-								 -v $(shell pwd)/../policies:/policies -v $(shell pwd)/../data:/data \
-								 -v $(shell pwd)/../diffs:/diffs -v $(shell pwd)/../plots:/plots \
-                 -v $(shell pwd)/config:/config -e CONFIG=/config/config.yaml \
-	  								drozza/olaph:latest python3 /generator/main.py
+gen:
+	    mkdir -p ${OLAPH_OUTDIR}/tasks ${OLAPH_OUTDIR}/models ${OLAPH_OUTDIR}/policies ${OLAPH_OUTDIR}/diffs ${OLAPH_OUTDIR}/plots && \
+	    docker run -it -v ${OLAPH_OUTDIR}/tasks:/tasks \
+	                   -v ${OLAPH_OUTDIR}/models:/models \
+			   -v ${OLAPH_OUTDIR}/policies:/policies \
+			   -v ${OLAPH_OUTDIR}/diffs:/diffs \
+			   -v ${OLAPH_OUTDIR}/plots:/plots \
+                           -v $(shell pwd)/config:/config -e CONFIG=/config/config_generate.yaml \
+	  			drozza/olaph:latest python3 /generator/cli.py
 
 distance:
 			python3 $(shell pwd)/generator/distance.py
