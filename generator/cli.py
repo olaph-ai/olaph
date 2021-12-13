@@ -218,6 +218,7 @@ def run():
                 plt.savefig(f'{plots_dir}/{name}-req_dist.png')
                 break
             except KeyboardInterrupt:
+                plt.clf()
                 pass
         lf.close()
 
