@@ -1,11 +1,11 @@
 OLAPH_OUTDIR := $(shell pwd)
 OLAPH_INDIR := $(shell pwd)
 
-all: build gen
+all: pull gen
 
-generate: build gen
+generate: pull gen
 
-monitor: build mon
+monitor: pull mon
 
 build:
 			docker build -t drozza/olaph:latest .
