@@ -125,7 +125,7 @@ def run():
                 mean_avg_d = np.mean(curr_avg_distances)
                 std_avg_d = np.std(curr_avg_distances)
                 high_thresh = mean_avg_d + 2 * std_avg_d
-                low_thresh = max(mean_avg_d - 2 * std_avg_d, 0.001)
+                low_thresh = max(mean_avg_d - 2 * std_avg_d, 0)
                 thresholds.append((w_i, high_thresh, low_thresh))
                 if len(curr_avg_distances) > 1:
                     volatilities.append((w_i, std_avg_d))
