@@ -7,13 +7,13 @@ paths:
   diffs_dir: /diffs
   plots_dir: /plots
 settings:
-  max_attributes: 30
-  max_buffer: 1000
-  window_size: 50
-  g: 0
+  max_attributes: 20
+  max_buffer: 50
+  window_size: 10
+  g: 1
   k: 8
   c: 1
-  decay: 0.9
+  decay: 0.7
   preferred_attributes: {}
   always_allow: |
   always_deny: |
