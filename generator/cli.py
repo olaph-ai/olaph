@@ -65,7 +65,10 @@ def run():
     lf = open(data_path, 'rb')
     while len(window) < window_size:
         line = lf.readline().decode().strip()
-        llog = json.loads(line)
+        try:
+            llog = json.loads(line)
+        except json.decoder.JSONDecodeError as e:
+            log.error(e)
         if llog['msg'] == 'Decision Log':
             window.append({'input': llog['input']})
     distances = [0] * len(window)
@@ -100,9 +103,8 @@ def run():
             line = lf.readline().decode().strip()
             try:
                 llog = json.loads(line)
-            except:
-                pass
-            log.info(llog)
+            except json.decoder.JSONDecodeError as e:
+                log.error(e)
             if llog['msg'] == 'Decision Log':
                 window.append({'input': llog['input']})
             if len(window) == window_size:
